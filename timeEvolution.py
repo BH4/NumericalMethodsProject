@@ -708,7 +708,8 @@ def plotMeanPositionAndMomentum(N,L,initFVec,eigen,card,grid,totTime):
     for i,finalFVec in enumerate(finalFVecs):
         if i%20==0:
             print i
-        meanXt,_,meanPt,_,energyt=checkValues(finalFVec,ygrid,L,d,dd)
+        #meanX,meanX2,meanP,meanP2,energy,classicalEnergy
+        meanXt,_,meanPt,_,energyt,classicalEnergy=checkValues(finalFVec,ygrid,L,d,dd)
         meanX.append(meanXt)
         meanP.append(meanPt)
         energy.append(energyt)
@@ -768,6 +769,23 @@ if __name__=="__main__":
     i=0
     j=1
 
+
+    ##########make a wrapper for this
+    ######also all the wrappers do is exactly this so change them all to use a function that does this.
+    initFunc=initalFunction(80.0,.426,5.0)
+
+    eigen,card,grid,_,_=changeOfVariables(N,L)
+
+    initFVec=[]
+    for i,xi in enumerate(grid):
+        if i==0 or i==len(grid)-1:
+            initFVec.append(0)
+        else:
+            yi=L*xi/np.sqrt(1-xi**2)
+            initFVec.append(initFunc(yi))
+
+    plotMeanPositionAndMomentum(N,L,initFVec,eigen,card,grid,3)
+
     #######################
     #Example function calls
     #######################
@@ -788,7 +806,7 @@ if __name__=="__main__":
     
 
     ##Gaussian time evolve movie.
-    GaussianTimeEvoMovie(N,L,80,.426,5.0)
+    #GaussianTimeEvoMovie(N,L,80,.426,5.0)
 
 
     ##Time evolve 'video' of superposition of states
