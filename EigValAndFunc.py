@@ -33,6 +33,7 @@ def checkNormalization(func):
 #Quick helper functions/also some testing for accuracy.
 ###################################################################################
 
+#use these two functions to keep from needing matricies for the coefficients
 #dot numpy array with numpy matrix A*M
 def dotAM(A,M):
     #assert len(A.shape)==1
@@ -83,8 +84,7 @@ def hamiltonian(L,grid,d,dd):
     return H
 """
 
-#I think these versions might be better numerically. [it doesn't seem to do better. also uses more memory because of the
-#extra matrix]
+#These versions might be better numerically. [it doesn't seem to do better.]
 """
 usingHO=False
 def hamiltonian(L,grid,d,dd):
@@ -172,7 +172,7 @@ def changeOfVariables(numpoints,L):
         eigen[i]=(eigen[i][0],newEigV)
     
 
-    return eigen,card,grid
+    return eigen,card,grid,d,dd
 
 ###################################################################################
 #Residuals
@@ -197,12 +197,12 @@ def calcR(bigH,bigGrid,E,vec,card):
 def residuals(L,N,Nprime):
 
     #small
-    eigen,cardS,_=changeOfVariables(N,L)
+    eigen,cardS,_,_,_=changeOfVariables(N,L)
 
     #big
     #gridB,dB,ddB,cardB=SpectralChebyshevExterior(-1,1,Nprime)
     #HB=hamiltonian(L,gridB,dB,ddB)
-    eigenB,_,gridB=changeOfVariables(Nprime,L)
+    eigenB,_,gridB,_,_=changeOfVariables(Nprime,L)
 
 
 
@@ -223,7 +223,7 @@ def residualsWithoutRecalculation(L,Nprime,eigen,cardS):
     #big
     #gridB,dB,ddB,cardB=SpectralChebyshevExterior(-1,1,Nprime)
     #HB=hamiltonian(L,gridB,dB,ddB)
-    eigenB,_,gridB=changeOfVariables(Nprime,L)
+    eigenB,_,gridB,_,_=changeOfVariables(Nprime,L)
 
     rList=[]#list of residual vectors
     for i in xrange(len(eigen)):
@@ -264,7 +264,7 @@ def hardcoreResidual(L,eigen,i,grid,card):
 def checkResiduals(N,L):
     Nprime=N*2
 
-    eigen,card,gridS=changeOfVariables(N,L)
+    eigen,card,gridS,_,_=changeOfVariables(N,L)
     rList,grid=residuals(L,N,Nprime)
     
     check=[400]
@@ -285,7 +285,7 @@ def checkResiduals(N,L):
         plt.show()
 
 def showEigenFunctionsAreOrthonormal(L,numpoints,i,j):
-    eigen,card,grid=changeOfVariables(numpoints,L)
+    eigen,card,grid,_,_=changeOfVariables(numpoints,L)
 
     func1=lookAtTheFunction(L,eigen[i][1],card)
     func2=lookAtTheFunction(L,eigen[j][1],card)
@@ -311,7 +311,7 @@ if __name__=="__main__":
     N=1000
     #checkResiduals(N,L)
 
-    eigen,card,grid=changeOfVariables(N,L)
+    eigen,card,grid,_,_=changeOfVariables(N,L)
     hardcoreResidual(L,eigen,1,grid,card)
 
 
@@ -319,20 +319,20 @@ if __name__=="__main__":
     """
     i=100
     Nprime=N*2
-    eigen,card,gridS=changeOfVariables(N,L)
+    eigen,card,gridS,_,_=changeOfVariables(N,L)
     plt.plot(gridS,eigen[i][1],color='blue')
     print '1'
     rList,grid=residuals(L,N,Nprime)
     plt.plot(grid,rList[i],color='red')
     print '2'
-    eigen,card,grid=changeOfVariables(Nprime,L)
+    eigen,card,grid,_,_=changeOfVariables(Nprime,L)
     plt.plot(grid,eigen[i][1],color='green')
     print '3'
     plt.show()
     """
 
     
-    #eigen,card,grid=changeOfVariables(10,3.0)
+    #eigen,card,grid,_,_=changeOfVariables(10,3.0)
     #print eigen[0][1]
     #print eigen[1][1]
     #print eigen[0][1]+eigen[1][1]

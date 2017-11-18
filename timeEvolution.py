@@ -1,10 +1,10 @@
-import mpmath
+#import mpmath
 import numpy as np
 import matplotlib.pyplot as plt
 from EigValAndFunc import changeOfVariables,lookAtTheFunction,hamiltonian,residualsWithoutRecalculation,residuals,checkNormalization
 from EigValAndFunc import usingHO
 from SpectralCode import SpectralChebyshevExterior
-import scipy
+#import scipy
 
 ###################################################################################
 #Initial function
@@ -125,7 +125,7 @@ def printEnergyLevels(inds,getRidOf2and4=False):
     N=key
 
     
-    eigen,card,grid=changeOfVariables(N,L)
+    eigen,_,grid,_,_=changeOfVariables(N,L)
     for i in inds:
         if getRidOf2and4:
             print eigen[i][0]*(2**(4.0/3))
@@ -133,25 +133,34 @@ def printEnergyLevels(inds,getRidOf2and4=False):
             print eigen[i][0]
 
 
-def setupSuperpositionOfEigenStates(N,L,i,j,output=False):
-    eigen,card,grid=changeOfVariables(N,L)
+def setupSuperpositionOfEigenStates(N,L,inds,output=False):
+    
 
-    initFVec=(1/np.sqrt(2))*(eigen[i][1]+eigen[j][1])
+    eigen,card,grid,d,dd=changeOfVariables(N,L)
+    ygrid=[mapFiniteToInf(x,L) for x in grid]
+
+    #initFVec=(1/np.sqrt(2))*(eigen[i][1]+eigen[j][1])
+    initFVec=(1/np.sqrt(len(inds)))*sum([eigen[ii][1] for ii in inds])
 
 
+    #energy=0.5*(eigen[i][0]+eigen[j][0])
+    energy=(1.0/len(inds))*(sum([eigen[ii][0] for ii in inds]))
+    if len(inds)==2:
+        period=2*np.pi/abs(eigen[inds[0]][0]-eigen[inds[1]][0])
+    else:
+        period=-1
 
-    energy=0.5*(eigen[i][0]+eigen[j][0])
-    period=2*np.pi/abs(eigen[i][0]-eigen[j][0])
     if output:
         xqmax=abs(meanPositionPower(initFVec,ygrid,L,1))
         print "energy="+str(energy)
-        print "period="+str(period)
+        if period>0:
+            print "period="+str(period)
         print '"classical period"='+str(4*np.sqrt(2)*1.31103/xqmax)
 
-    return eigen,card,grid,initFVec,period,energy
+    return eigen,card,grid,d,dd,initFVec,period,energy
 
 ###################################################################################
-#Analyze position
+#Analyze position and momentum
 ###################################################################################
 
 #approximately finds the expected value of position of a state using Chebyshev-gauss quadrature
@@ -338,7 +347,6 @@ def innerProduct(fVec,eigenstate,grid,L):
 #Time evolve a state f through a time t using energy eigenstates up to nCutoff.
 #Will have to determine nCutoff by calculating the residuals of the eigenvectors. If the overlap of previous eigenvectors
 #is not getting small by the time the residual tolerance of the eigenvectors is passed then an warning will be printed.
-
 def timeEvolve(fVec,t,L,eigen,grid,card):
     N=len(grid)
 
@@ -377,9 +385,6 @@ def timeEvolve(fVec,t,L,eigen,grid,card):
         else:
             nextVals=evoOperator*eigenV*overlap
             ind=(len(grid)/2)+1
-            #print "curr value of random mid:"+str(PsiT[ind])
-            #print "Adding value: "+str(nextVals[ind])
-            #print "-"*50
             PsiT+=nextVals
 
     tol=10**(-8)#arbitrary 8
@@ -391,6 +396,7 @@ def timeEvolve(fVec,t,L,eigen,grid,card):
 
 
 """
+#higher accuracy time evolution
 def timeEvolve(fVec,t,L,eigen,grid,card):
     mpmath.mp.dps=50
 
@@ -457,7 +463,7 @@ def timeEvolve(fVec,t,L,eigen,grid,card):
 #assumes the function is defined on -inf to inf
 #N is the largest eigenvector I am willing to calculate. Not all eigenvectors will be used.
 def timeEvolveWrapper(f,N,t,L):
-    eigen,card,grid=changeOfVariables(N,L)
+    eigen,card,grid,d,dd=changeOfVariables(N,L)
 
     #f(grid)
     fVec=[]
@@ -472,7 +478,7 @@ def timeEvolveWrapper(f,N,t,L):
 
     timeEvoF=timeEvolve(fVec,t,L,eigen,grid,card)
 
-    return timeEvoF,card,grid,fVec
+    return timeEvoF,card,grid,d,dd,fVec
 
 ###################################################################################
 #Residual
@@ -513,7 +519,7 @@ def timeResidual(initFVec,L,eigen,card,grid,Nprime,t):
     return R,bigGrid,interpFinalVec
 
 def timeResidualWrapper(initFunc,L,N,Nprime,t):
-    eigen,card,grid=changeOfVariables(N,L)
+    eigen,card,grid,_,_=changeOfVariables(N,L)
 
     fVec=[]
     for i,xi in enumerate(grid):
@@ -543,7 +549,7 @@ def finiteDifferenceTimeResidual(initFVec,L,eigen,card,grid,t):
 
 def residualOfEigSuperposition(N,L,i,j,t):
     Nprime=N*2
-    eigen,card,grid=changeOfVariables(N,L)
+    eigen,card,grid,_,_=changeOfVariables(N,L)
     initFVec=(1/np.sqrt(2))*(eigen[i][1]+eigen[j][1])
 
     R,bigGrid,interpFinalVec=timeResidual(initFVec,L,eigen,card,grid,Nprime,t)
@@ -609,80 +615,37 @@ def makeMovie(finalFVecs,grid,times,initFVec=None,card=None,d=None,dd=None,print
             plt.ylim(0,3)
             plt.show()
 
-def GaussianTimeEvoMovie(N,L):
-    initF=initalFunction(80.0,.426,5.0)
+#interesting vals (1000,5.0,80,.426,5.0)
+def GaussianTimeEvoMovie(N,L,minE,maxWidth,offset):
+    initF=initalFunction(minE,maxWidth,offset)
     #t=np.linspace(0.0,15*np.pi,16)
     #t=np.linspace(0.0,2*np.pi,15)
     t=np.linspace(0.0,1.0,20)
-    #print t
-    finalFVecs,card,grid,initFVec=timeEvolveWrapper(initF,N,t,L)
-
-    _,d,dd,_=SpectralChebyshevExterior(-1,1,N)
+    finalFVecs,card,grid,d,dd,initFVec=timeEvolveWrapper(initF,N,t,L)
 
     makeMovie(finalFVecs,grid,t,initFVec=initFVec,card=None,d=d,dd=dd,printValues=True,showGraph=True)
-    """
-    ygrid=[mapFiniteToInf(x,L) for x in grid]
 
-    for i,finalFVec in enumerate(finalFVecs):
-
-        #finalF=lookAtTheFunction(L,finalFVec,card)
-        
-        print "At t="+str(round(t[i],8))
-        checkValues(finalFVec,ygrid,L,d,dd,r=5,output=True)
-        print '-'*50
-        
-        #plt.plot(ygrid,abs(initFVec)**2)
-        #plt.plot(ygrid,abs(finalFVec)**2)
-        #plt.xlim(-5,5)
-        #plt.show()
-    """
 
 def superPositionEigenFuncMovie(N,L,i,j):
-    eigen,card,grid,initFVec,period,_=setupSuperpositionOfEigenStates(N,L,i,j,output=True)
+    eigen,card,grid,d,dd,initFVec,period,_=setupSuperpositionOfEigenStates(N,L,[i,j],output=True)
 
     t=np.linspace(0,period,11)
     finalFVecs=timeEvolve(initFVec,t,L,eigen,grid,card)
 
-    ygrid=[mapFiniteToInf(x,L) for x in grid]
-
-
-    for i,finalFVec in enumerate(finalFVecs):
-        meanX=meanPositionPower(finalFVec,ygrid,L,1)
-        rmsX=rmsPosition(finalFVec,ygrid,L)
-        print "At t="+str(round(t[i],4))+" the mean position="+str(round(meanX,4))+" and the rms position="+str(round(rmsX,4))
-
-
-        #plt.plot(ygrid,abs(initFVec)**2)
-        #plt.plot(ygrid,abs(finalFVec)**2)
-        #plt.xlim(-10,10)
-        #plt.show()
+    makeMovie(finalFVecs,grid,t,initFVec=initFVec,card=None,d=d,dd=dd,printValues=True,showGraph=True)
+    
 
 def superPositionManyEigenFuncMovie(N,L,i):
-    eigen,card,grid=changeOfVariables(N,L)
-    initFVec=(1/np.sqrt(len(i)))*sum([eigen[ii][1] for ii in i])
-    print (1.0/len(i))*(sum([eigen[ii][0] for ii in i]))
+    eigen,card,grid,d,dd,initFVec,_,_=setupSuperpositionOfEigenStates(N,L,i,output=True)
 
     t=np.linspace(0,5,10)
     finalFVecs=timeEvolve(initFVec,t,L,eigen,grid,card)
 
-
-    y=[mapFiniteToInf(x,L) for x in grid]
-
-
-    for i,finalFVec in enumerate(finalFVecs):
-        meanX=meanPositionPower(finalFVec,y,L,1)
-        rmsX=rmsPosition(finalFVec,y,L)
-        print "At t="+str(round(t[i],4))+" the mean position="+str(round(meanX,4))+" and the rms position="+str(round(rmsX,4))
-
-
-        plt.plot(y,abs(initFVec)**2)
-        plt.plot(y,abs(finalFVec)**2)
-        plt.xlim(-10,10)
-        plt.show()
+    makeMovie(finalFVecs,grid,t,initFVec=initFVec,card=None,d=d,dd=dd,printValues=True,showGraph=True)
 
 
 def printOverlapWithTime(N,L,i,j):
-    eigen,card,grid=changeOfVariables(N,L)
+    eigen,card,grid,_,_=changeOfVariables(N,L)
     if i==-1 or j==-1:
         initF=initalFunction(10.0,.426,1.0)
         fVec=[]
@@ -703,9 +666,6 @@ def printOverlapWithTime(N,L,i,j):
 
         t=np.linspace(0,period,11)
     
-
-
-
     finalFVecs=timeEvolve(initFVec,t,L,eigen,grid,card)
 
 
@@ -808,64 +768,11 @@ if __name__=="__main__":
     i=0
     j=1
 
-    #eigen,card,grid=changeOfVariables(N,L)
-    #for i in xrange(0,20):
-    #    checkPeriodTimesXqmax(L,eigen,grid,i,i+3)
-
-    """
-    initF=initalFunction(25.0,.426,1.0)
-    eigen,card,grid=changeOfVariables(N,L)
-    ygrid=[mapFiniteToInf(x,L) for x in grid]
-
-
-    #turn func into vec
-    initFVec=[]
-    for i,xi in enumerate(grid):
-        if i==0 or i==len(grid)-1:
-            initFVec.append(0)
-        else:
-            yi=L*xi/np.sqrt(1-xi**2)
-            initFVec.append(initF(yi))
-    """
-    
-    
-    #check that <psi i |x |psi j> = initial value of x for superposition. should be xQmax
-    """
-    eigi=lookAtTheFunction(L,eigen[i][1],card)
-    eigj=lookAtTheFunction(L,eigen[j][1],card)
-    integrand=lambda x:eigi(x)*x*eigj(x)
-    val,err=scipy.integrate.quad(integrand,-np.inf,np.inf)
-    print abs(val)
-    initFVec=(1/np.sqrt(2))*(eigen[i][1]+eigen[j][1])
-    print abs(meanPositionPower(initFVec,ygrid,L,1))
-    """
-
-    #setup superposition vector
-    """
-    energy=0.5*(eigen[i][0]+eigen[j][0])
-    #print eigen[i][0]
-    #print eigen[j][0]
-    print "energy="+str(energy)
-    period=2*np.pi/abs(eigen[i][0]-eigen[j][0])
-    print "period="+str(period)
-    
-
-    initFVec=(1/np.sqrt(2))*(eigen[i][1]+eigen[j][1])
-    xqmax=abs(meanPositionPower(initFVec,ygrid,L,1))
-    print "classical period="+str(4*np.sqrt(2)*1.31103/xqmax)
-    """
-
-
-    
-
     #######################
     #Example function calls
     #######################
 
-    ##Gaussian time evolve movie.
-    GaussianTimeEvoMovie(N,L)
-
-
+    
     ##quickly print off some energy levels
     #printEnergyLevels([0,30],getRidOf2and4=False)
 
@@ -880,13 +787,14 @@ if __name__=="__main__":
     #residualOfEigSuperposition(N,L,0,1,10.0)
     
 
-
+    ##Gaussian time evolve movie.
+    GaussianTimeEvoMovie(N,L,80,.426,5.0)
 
 
     ##Time evolve 'video' of superposition of states
     #superPositionEigenFuncMovie(N,L,0,1)
     ##Time evolve 'video' of superposition of many states
-    #superPositionManyEigenFuncMovie(N,L,[25])
+    #superPositionManyEigenFuncMovie(N,L,[0,1,2])
 
 
 
