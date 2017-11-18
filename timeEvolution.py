@@ -159,6 +159,17 @@ def setupSuperpositionOfEigenStates(N,L,inds,output=False):
 
     return eigen,card,grid,d,dd,initFVec,period,energy
 
+#assumes function is defined from -inf to inf
+def funcToVec(func,grid):
+    vec=[]
+    for i,xi in enumerate(grid):
+        if i==0 or i==len(grid)-1:
+            vec.append(0)
+        else:
+            yi=L*xi/np.sqrt(1-xi**2)
+            vec.append(func(yi))
+    return vec
+
 ###################################################################################
 #Analyze position and momentum
 ###################################################################################
@@ -465,14 +476,7 @@ def timeEvolve(fVec,t,L,eigen,grid,card):
 def timeEvolveWrapper(f,N,t,L):
     eigen,card,grid,d,dd=changeOfVariables(N,L)
 
-    #f(grid)
-    fVec=[]
-    for i,xi in enumerate(grid):
-        if i==0 or i==len(grid)-1:
-            fVec.append(0)
-        else:
-            yi=L*xi/np.sqrt(1-xi**2)
-            fVec.append(f(yi))
+    fVec=funcToVec(f,grid)
 
     fVec=np.array(fVec)
 
@@ -521,13 +525,7 @@ def timeResidual(initFVec,L,eigen,card,grid,Nprime,t):
 def timeResidualWrapper(initFunc,L,N,Nprime,t):
     eigen,card,grid,_,_=changeOfVariables(N,L)
 
-    fVec=[]
-    for i,xi in enumerate(grid):
-        if i==0 or i==len(grid)-1:
-            fVec.append(0)
-        else:
-            yi=L*xi/np.sqrt(1-xi**2)
-            fVec.append(initFunc(yi))
+    fVec=funcToVec(initFunc,grid)
 
     fVec=np.array(fVec)
 
@@ -695,8 +693,8 @@ def printOverlapWithTime(N,L,i,j):
 #Other checks
 ###################################################################################
 
-def plotMeanPositionAndMomentum(N,L,initFVec,eigen,card,grid,totTime):
-    _,d,dd,_=SpectralChebyshevExterior(-1,1,N)
+def plotMeanPositionAndMomentum(N,L,initFVec,eigen,card,grid,d,dd,totTime):
+    #_,d,dd,_=SpectralChebyshevExterior(-1,1,N)
     ygrid=[mapFiniteToInf(x,L) for x in grid]
 
     t=np.linspace(0,totTime,200)
@@ -718,6 +716,13 @@ def plotMeanPositionAndMomentum(N,L,initFVec,eigen,card,grid,totTime):
     plt.plot(t,meanP,color='green')
     plt.plot(t,energy,color='red')
     plt.show()
+
+def plotMeanValsW(N,L,initFunc):
+    eigen,card,grid,d,dd=changeOfVariables(N,L)
+
+    initFVec=funcToVec(initFunc,grid)
+
+    plotMeanPositionAndMomentum(N,L,initFVec,eigen,card,grid,d,dd,3)
 
 def checkEhrenfest(N,L,initFVec,eigen,card,grid,tinit,dt):
     _,d,dd,_=SpectralChebyshevExterior(-1,1,N)
@@ -768,23 +773,7 @@ if __name__=="__main__":
     N=1000
     i=0
     j=1
-
-
-    ##########make a wrapper for this
-    ######also all the wrappers do is exactly this so change them all to use a function that does this.
-    initFunc=initalFunction(80.0,.426,5.0)
-
-    eigen,card,grid,_,_=changeOfVariables(N,L)
-
-    initFVec=[]
-    for i,xi in enumerate(grid):
-        if i==0 or i==len(grid)-1:
-            initFVec.append(0)
-        else:
-            yi=L*xi/np.sqrt(1-xi**2)
-            initFVec.append(initFunc(yi))
-
-    plotMeanPositionAndMomentum(N,L,initFVec,eigen,card,grid,3)
+    
 
     #######################
     #Example function calls
@@ -806,7 +795,10 @@ if __name__=="__main__":
     
 
     ##Gaussian time evolve movie.
-    #GaussianTimeEvoMovie(N,L,80,.426,5.0)
+    GaussianTimeEvoMovie(N,L,80,.426,5.0)
+
+    #initFunc=initalFunction(80.0,.426,5.0)
+    #plotMeanValsW(N,L,initFunc)
 
 
     ##Time evolve 'video' of superposition of states
