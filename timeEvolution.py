@@ -1,8 +1,8 @@
 #import mpmath
 import numpy as np
 import matplotlib.pyplot as plt
-from EigValAndFunc import changeOfVariables,lookAtTheFunction,hamiltonian,residualsWithoutRecalculation,residuals,checkNormalization
-from EigValAndFunc import usingHO
+from EigValAndFunc import changeOfVariables,lookAtTheFunction,hamiltonian
+from EigValAndFunc import residualsWithoutRecalculation,residuals,checkNormalization,usingHO
 from SpectralCode import SpectralChebyshevExterior
 #import scipy
 
@@ -199,48 +199,7 @@ def rmsPosition(state,grid,L):
     meanX=meanPositionPower(state,grid,L,1)
     meanX2=meanPositionPower(state,grid,L,2)
     return np.sqrt(meanX2-meanX**2)
-"""
-def meanMomentumPower(state,grid,L,power):
-    assert grid[-2]>1.0#check to make sure I put in the correct grid.
-    N=len(grid)
 
-    gridCopy,d,dd,card=SpectralChebyshevExterior(-1,1,len(grid))
-
-    #I want to take derivatives with respect to y so here is a derivative with respect to x and I will later
-    #multiply by (dx/dy)^n
-    nthDerivativeOfState=state
-    for i in xrange(power):
-        nthDerivativeOfState=np.dot(d,nthDerivativeOfState)
-
-
-
-    total=0
-    #takes the values 1,2,...,N-3,N-2   -> no endpoints
-    for i in xrange(1,N-1):
-        weight=(np.pi/(N-1))
-
-        yi=grid[i]
-        xi=yi/np.sqrt(L**2+yi**2)
-
-        #might be able to write this more efficiently. Especially if I was just doing power=1,2
-        g=(L/(1-xi**2))*(((1-xi**2)**(3.0/2))/L)**power*np.conj(state[i])*nthDerivativeOfState[i]
-
-        total+=weight*g
-
-        #print weight
-        #print (L/(1-xi**2))
-        #print np.conj(state[i])
-        #print nthDerivativeOfState[i]
-        #print weight*g
-        #print total
-        #print '-'*50
-
-    total=total*((-1j)**power)
-    print total
-    #assert abs(np.imag(total))<10**(-8)#since p is hermitian any expectation value of any power should be real.
-
-    return np.real(total)
-"""
 def meanMomentumPower(state,grid,L,d,dd,power):
     assert power==1 or power==2
     if power==1:
@@ -304,6 +263,10 @@ def rmsMomentum(state,grid,L):
     meanP2=meanMomentumPower(state,grid,L,2)
     return np.sqrt(meanP2-meanP**2)
 
+
+
+CVNR=6
+VALNAMES=["Mean Position","RMS Position","Mean Momentum","RMS Momentum","Energy","Classical Energy"]
 def checkValues(vec,ygrid,L,d,dd,r=4,output=False):
     #y=[mapFiniteToInf(x,L) for x in grid]
 
@@ -328,8 +291,14 @@ def checkValues(vec,ygrid,L,d,dd,r=4,output=False):
         print "The mean position="+str(round(meanX,r))+" and the rms position="+str(round(rmsX,r))
         print "and the mean Momentum="+str(round(meanP,r))+" and the rms Momentum="+str(round(rmsP,r))
         print "and Heisenberg's uncertanty(>.5)="+str(round(hu,r))+" and Energy="+str(round(energy,r))
-        print "clasical energy?="+str(classicalEnergy)
-    return meanX,meanX2,meanP,meanP2,energy,classicalEnergy
+        print "classical energy?="+str(classicalEnergy)
+    return meanX,rmsX,meanP,rmsP,energy,classicalEnergy
+
+def quickCheckValuesW(N,L,func):
+    _,_,grid,d,dd=changeOfVariables(N,L)
+    fVec=funcToVec(func,grid)
+    ygrid=[mapFiniteToInf(x,L) for x in grid]
+    checkValues(fVec,ygrid,L,d,dd,output=True)
 
 ###################################################################################
 #Time Evolution
@@ -693,37 +662,6 @@ def printOverlapWithTime(N,L,i,j):
 #Other checks
 ###################################################################################
 
-def plotMeanPositionAndMomentum(N,L,initFVec,eigen,card,grid,d,dd,totTime):
-    #_,d,dd,_=SpectralChebyshevExterior(-1,1,N)
-    ygrid=[mapFiniteToInf(x,L) for x in grid]
-
-    t=np.linspace(0,totTime,200)
-    finalFVecs=timeEvolve(initFVec,t,L,eigen,grid,card)
-
-    meanX=[]
-    meanP=[]
-    energy=[]
-    for i,finalFVec in enumerate(finalFVecs):
-        if i%20==0:
-            print i
-        #meanX,meanX2,meanP,meanP2,energy,classicalEnergy
-        meanXt,_,meanPt,_,energyt,classicalEnergy=checkValues(finalFVec,ygrid,L,d,dd)
-        meanX.append(meanXt)
-        meanP.append(meanPt)
-        energy.append(energyt)
-
-    plt.plot(t,meanX,color='blue')
-    plt.plot(t,meanP,color='green')
-    plt.plot(t,energy,color='red')
-    plt.show()
-
-def plotMeanValsW(N,L,initFunc):
-    eigen,card,grid,d,dd=changeOfVariables(N,L)
-
-    initFVec=funcToVec(initFunc,grid)
-
-    plotMeanPositionAndMomentum(N,L,initFVec,eigen,card,grid,d,dd,3)
-
 def checkEhrenfest(N,L,initFVec,eigen,card,grid,tinit,dt):
     _,d,dd,_=SpectralChebyshevExterior(-1,1,N)
 
@@ -759,21 +697,109 @@ def checkPeriodTimesXqmax(L,eigen,grid,i,j):
     xqmax=abs(meanPositionPower(initFVec,ygrid,L,1))
     print period*xqmax
     return period,xqmax
+
+
+###################################################################################
+#Presentation/Report graphs
+###################################################################################
+
+#Optional inputs are other lines that can be plotted.
+#soar=size of allowed region (determined by energy)
+#cp=classical period (based on initial position) ASSUMES initFVec is a real wavefunction! and times start at 0
+def plotValues(N,L,initFVec,eigen,card,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=False,cp=False):
+    ygrid=[mapFiniteToInf(x,L) for x in grid]
+
+    t=np.linspace(0,totTime,NumSteps)
+    finalFVecs=timeEvolve(initFVec,t,L,eigen,grid,card)
+
+    #arrays of mean position,rms position,mean P, rms P,energy,"classicalEnergy"
+    arraysOfVals=[[] for i in xrange(CVNR)]
+    for i,finalFVec in enumerate(finalFVecs):
+        if i%(int(NumSteps/10))==0:
+            print float(i)/NumSteps
+
+        vals=checkValues(finalFVec,ygrid,L,d,dd)
+        for i,A in enumerate(arraysOfVals):
+            A.append(vals[i])
+
+
+    for i in xrange(CVNR):
+        if ValsToPlot[i]:
+            plt.plot(t,arraysOfVals[i],label=VALNAMES[i])
+
+    if soar or cp:
+        xqmax=(4.0*arraysOfVals[4][0])**(.25)
+        if soar:
+            plt.plot((t[0], t[-1]), (xqmax, xqmax), 'k-')
+            plt.plot((t[0], t[-1]), (-xqmax, -xqmax), 'k-')
+        if cp:
+            clPeriod=4*np.sqrt(2)*1.31103/arraysOfVals[0][0]
+            for i in xrange(int(totTime/clPeriod)+1):
+                plt.plot((i*clPeriod, i*clPeriod), (-xqmax, xqmax), 'k-')
+
+    plt.legend()
+    plt.show()
+
+#ValsToPlot is a boolean array of length equal to the number of items returned by "checkValues" (stored in CVNR variable)
+def plotValsW(N,L,initFunc,totTime,NumSteps,ValsToPlot,soar=False,cp=False):
+    assert len(ValsToPlot)==CVNR
+    eigen,card,grid,d,dd=changeOfVariables(N,L)
+
+    initFVec=funcToVec(initFunc,grid)
+
+    plotValues(N,L,initFVec,eigen,card,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=soar,cp=cp)
+
+
+
 ###################################################################################
 #Main
 ###################################################################################
 
+#Q: Is there a time beyond which the wavefunction no longer resembles a wavepacket 
+#whos mean position and momentum follow classical evolution?
+#A: Yes
+
+#Q: Is there a time beyond which the mean position remains small 
+#(compared to the initial position or the size of the allowed region) throughout a classical period?
+#A: Yes, the mean position never reaches the initial position again after starting there and its
+#maximum value within an oscillation gets progressively smaller. 
+#The rate of decrease in maximum mean position decreases more slowly for smaller starting positions (method 1 Gaussian,c=0.426)
+
+
+#Q: Is there a time beyond which the rms deviation is comparable to the size of the allowed region?
+#A: Not as far as I can find. Certainly not for method 1 gaussians
+
+#Q: Is there a time beyond which your calculation loses accuracy?
+#Q: How do these answers depend on the energy and width of the initial state?
+
+
+#Decreasing c will force me to need more eigenvectors (sharper point means more energy eigenfunction).
+#As b increases The energy drastically increases but the number of eigenfunctions to represent it does
+#not increase quickly.
 
 
 #Problem Values: minEnergy 82.637, xmax=4.2639, maxWidth=xmax/10
+#0=large initial potential but still well represented. Very close to classical evolution.
+goodInitFunctions=[(0.0,.426,6.0)]
+def getInitFunc(i):
+    vals=goodInitFunctions[i]
+    return initalFunction(vals[0],vals[1],vals[2])
 
 if __name__=="__main__":
     #L=6.2#good for HO
     L=5.0#good for quartic
-    N=1000
+    N=500
     i=0
     j=1
     
+
+    initFunc=initalFunction(80.0,0.426,6.0)
+    #quickCheckValuesW(N,L,initFunc)
+    #print '-'*50
+    #plotValsW(N,L,initFunc,3,200,[1,0,1,0,1,0])
+    plotValsW(N,L,initFunc,12,400,[1,0,0,0,0,0],soar=False,cp=True)
+    #plotValsW(N,L,initFunc,12,400,[0,1,0,0,0,0],soar=True,cp=True)
+
 
     #######################
     #Example function calls
@@ -795,10 +821,7 @@ if __name__=="__main__":
     
 
     ##Gaussian time evolve movie.
-    GaussianTimeEvoMovie(N,L,80,.426,5.0)
-
-    #initFunc=initalFunction(80.0,.426,5.0)
-    #plotMeanValsW(N,L,initFunc)
+    #GaussianTimeEvoMovie(N,L,80,.426,5.0)
 
 
     ##Time evolve 'video' of superposition of states
