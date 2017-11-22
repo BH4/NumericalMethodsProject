@@ -1,8 +1,7 @@
 #import mpmath
 import numpy as np
 import matplotlib.pyplot as plt
-from EigValAndFunc import changeOfVariables,lookAtTheFunction,hamiltonian
-from EigValAndFunc import residualsWithoutRecalculation,residuals,checkNormalization,usingHO
+from EigValAndFunc import changeOfVariables,lookAtTheFunction,hamiltonian,residuals,usingHO
 from SpectralCode import SpectralChebyshevExterior
 #import scipy
 
@@ -73,6 +72,10 @@ def mapFiniteToInf(xi,L):
         return -1*np.inf
     return L*xi/np.sqrt(1-xi**2)
 
+def mapFiniteToInfArray(xgrid,L):
+    ygrid=[mapFiniteToInf(x,L) for x in xgrid]
+    return ygrid
+
 #nCutoff mostly insensitive to changes in mult
 #tol=10**-3,L=5,mult=5 (2 past 500)
 #nCutoffPreComp={100:4,200:32,300:63,400:96,500:129,600:165,700:195,800:227,900:260,1000:289}
@@ -137,7 +140,7 @@ def setupSuperpositionOfEigenStates(N,L,inds,output=False):
     
 
     eigen,card,grid,d,dd=changeOfVariables(N,L)
-    ygrid=[mapFiniteToInf(x,L) for x in grid]
+    ygrid=mapFiniteToInfArray(grid,L)
 
     #initFVec=(1/np.sqrt(2))*(eigen[i][1]+eigen[j][1])
     initFVec=(1/np.sqrt(len(inds)))*sum([eigen[ii][1] for ii in inds])
@@ -268,8 +271,6 @@ def rmsMomentum(state,grid,L):
 CVNR=6
 VALNAMES=["Mean Position","RMS Position","Mean Momentum","RMS Momentum","Energy","Classical Energy"]
 def checkValues(vec,ygrid,L,d,dd,r=4,output=False):
-    #y=[mapFiniteToInf(x,L) for x in grid]
-
     meanX=meanPositionPower(vec,ygrid,L,1)
     meanX2=meanPositionPower(vec,ygrid,L,2)
     rmsX=np.sqrt(meanX2-meanX**2)
@@ -297,7 +298,7 @@ def checkValues(vec,ygrid,L,d,dd,r=4,output=False):
 def quickCheckValuesW(N,L,func):
     _,_,grid,d,dd=changeOfVariables(N,L)
     fVec=funcToVec(func,grid)
-    ygrid=[mapFiniteToInf(x,L) for x in grid]
+    ygrid=mapFiniteToInfArray(grid,L)
     checkValues(fVec,ygrid,L,d,dd,output=True)
 
 ###################################################################################
@@ -327,7 +328,7 @@ def innerProduct(fVec,eigenstate,grid,L):
 #Time evolve a state f through a time t using energy eigenstates up to nCutoff.
 #Will have to determine nCutoff by calculating the residuals of the eigenvectors. If the overlap of previous eigenvectors
 #is not getting small by the time the residual tolerance of the eigenvectors is passed then an warning will be printed.
-def timeEvolve(fVec,t,L,eigen,grid,card):
+def timeEvolve(fVec,t,L,eigen,grid):
     N=len(grid)
 
     nCutoff=nCutoffPreComp[N]
@@ -368,7 +369,7 @@ def timeEvolve(fVec,t,L,eigen,grid,card):
             PsiT+=nextVals
 
     tol=10**(-8)#arbitrary 8
-    if lastOverlap>tol or almostLastO>tol:
+    if abs(lastOverlap)>tol or abs(almostLastO)>tol:
         print "warning: overlap was not small before nCutoff reached"
         print max(lastOverlap,almostLastO)
 
@@ -437,8 +438,6 @@ def timeEvolve(fVec,t,L,eigen,grid,card):
     return PsiT
 """
 
-
-
 #assumes functions goes to zero at infinity
 #assumes the function is defined on -inf to inf
 #N is the largest eigenvector I am willing to calculate. Not all eigenvectors will be used.
@@ -449,7 +448,7 @@ def timeEvolveWrapper(f,N,t,L):
 
     fVec=np.array(fVec)
 
-    timeEvoF=timeEvolve(fVec,t,L,eigen,grid,card)
+    timeEvoF=timeEvolve(fVec,t,L,eigen,grid)
 
     return timeEvoF,card,grid,d,dd,fVec
 
@@ -464,7 +463,7 @@ def timeResidual(initFVec,L,eigen,card,grid,Nprime,t):
 
     nCutoff=nCutoffPreComp[N]
 
-    finalFVec=timeEvolve(initFVec,t,L,eigen,grid,card)
+    finalFVec=timeEvolve(initFVec,t,L,eigen,grid)
 
     #bigger stuff
     bigGrid,dB,ddB,_=SpectralChebyshevExterior(-1,1,Nprime)
@@ -502,12 +501,12 @@ def timeResidualWrapper(initFunc,L,N,Nprime,t):
 
 #uses finite difference methods to determine the residual
 #write out the time derivative analytically but do the H Psi(x,t) with finite difference?
-def finiteDifferenceTimeResidual(initFVec,L,eigen,card,grid,t):
+def finiteDifferenceTimeResidual(initFVec,L,eigen,grid,t):
     N=len(grid)
 
     #t=np.arange(0,tmax,dt)
 
-    finalFVec=timeEvolve(initFVec,t,L,eigen,grid,card)
+    finalFVec=timeEvolve(initFVec,t,L,eigen,grid)
 
 
 ###################################################################################
@@ -521,7 +520,7 @@ def residualOfEigSuperposition(N,L,i,j,t):
 
     R,bigGrid,interpFinalVec=timeResidual(initFVec,L,eigen,card,grid,Nprime,t)
 
-    y=[mapFiniteToInf(x,L) for x in bigGrid]
+    y=mapFiniteToInfArray(bigGrid,L)
     plt.plot(y,abs(R))
     plt.xlim(-5,5)
     plt.ylim(0,1)
@@ -534,7 +533,7 @@ def residualOfGaussian(N,L,t):
 
     R,bigGrid,interpFinalVec=timeResidualWrapper(initFunc,L,N,Nprime,t)
 
-    y=[mapFiniteToInf(x,L) for x in bigGrid]
+    y=mapFiniteToInfArray(bigGrid,L)
     #y=np.array(y)
     plt.plot(y,abs(R))
     plt.plot(y,abs(interpFinalVec))
@@ -548,7 +547,7 @@ def residualOfGaussian(N,L,t):
 
 #if cardinal funcitons are supplied then the plots will be interpolated functions of 2000 evenly spaced points
 def makeMovie(finalFVecs,grid,times,initFVec=None,card=None,d=None,dd=None,printValues=False,showGraph=True):
-    ygrid=[mapFiniteToInf(x,L) for x in grid]
+    ygrid=mapFiniteToInfArray(grid,L)
 
     if (not showGraph) and (not printValues):
         print "This function has no purpose if you do nothing."
@@ -594,25 +593,25 @@ def GaussianTimeEvoMovie(N,L,minE,maxWidth,offset):
 
 
 def superPositionEigenFuncMovie(N,L,i,j):
-    eigen,card,grid,d,dd,initFVec,period,_=setupSuperpositionOfEigenStates(N,L,[i,j],output=True)
+    eigen,_,grid,d,dd,initFVec,period,_=setupSuperpositionOfEigenStates(N,L,[i,j],output=True)
 
     t=np.linspace(0,period,11)
-    finalFVecs=timeEvolve(initFVec,t,L,eigen,grid,card)
+    finalFVecs=timeEvolve(initFVec,t,L,eigen,grid)
 
     makeMovie(finalFVecs,grid,t,initFVec=initFVec,card=None,d=d,dd=dd,printValues=True,showGraph=True)
     
 
 def superPositionManyEigenFuncMovie(N,L,i):
-    eigen,card,grid,d,dd,initFVec,_,_=setupSuperpositionOfEigenStates(N,L,i,output=True)
+    eigen,_,grid,d,dd,initFVec,_,_=setupSuperpositionOfEigenStates(N,L,i,output=True)
 
     t=np.linspace(0,5,10)
-    finalFVecs=timeEvolve(initFVec,t,L,eigen,grid,card)
+    finalFVecs=timeEvolve(initFVec,t,L,eigen,grid)
 
     makeMovie(finalFVecs,grid,t,initFVec=initFVec,card=None,d=d,dd=dd,printValues=True,showGraph=True)
 
 
 def printOverlapWithTime(N,L,i,j):
-    eigen,card,grid,_,_=changeOfVariables(N,L)
+    eigen,_,grid,_,_=changeOfVariables(N,L)
     if i==-1 or j==-1:
         initF=initalFunction(10.0,.426,1.0)
         fVec=[]
@@ -633,10 +632,10 @@ def printOverlapWithTime(N,L,i,j):
 
         t=np.linspace(0,period,11)
     
-    finalFVecs=timeEvolve(initFVec,t,L,eigen,grid,card)
+    finalFVecs=timeEvolve(initFVec,t,L,eigen,grid)
 
 
-    y=[mapFiniteToInf(x,L) for x in grid]
+    y=mapFiniteToInfArray(grid,L)
 
     originalOverlaps=[]
     for finalFVec in finalFVecs:
@@ -655,20 +654,18 @@ def printOverlapWithTime(N,L,i,j):
             print max(abs(diff))
             #print diff
         #print "this should be 1="+str(sum(abs(overlaps)**2))
-        #print "this should also be 1="+str(checkNormalization(lookAtTheFunction(L,finalFVec,card)))
 
 
 ###################################################################################
 #Other checks
 ###################################################################################
 
-def checkEhrenfest(N,L,initFVec,eigen,card,grid,tinit,dt):
-    _,d,dd,_=SpectralChebyshevExterior(-1,1,N)
+def checkEhrenfest(N,L,initFVec,eigen,grid,d,dd,tinit,dt):
 
-    ygrid=[mapFiniteToInf(x,L) for x in grid]
+    ygrid=mapFiniteToInfArray(grid,L)
 
     t=[tinit+0*dt,tinit+1*dt,tinit+2*dt]
-    finalFVecs=timeEvolve(initFVec,t,L,eigen,grid,card)
+    finalFVecs=timeEvolve(initFVec,t,L,eigen,grid)
     meanX=[]
     meanP=[]
     meanX3=[]
@@ -685,10 +682,19 @@ def checkEhrenfest(N,L,initFVec,eigen,card,grid,tinit,dt):
     else:
         print str((meanP[2]-meanP[0])/(2*dt))+'='+str(-1*meanX3[1])
 
+def checkEhrenfestWrapper(initFunc,L,N,tinit,dt):
+    eigen,_,grid,d,dd=changeOfVariables(N,L)
+
+    initFVec=funcToVec(initFunc,grid)
+
+    initFVec=np.array(initFVec)
+
+    return checkEhrenfest(N,L,initFVec,eigen,grid,d,dd,tinit,dt)
+
 #see what the period times xqmax is for a superposition of i and j
 def checkPeriodTimesXqmax(L,eigen,grid,i,j):
     
-    ygrid=[mapFiniteToInf(x,L) for x in grid]
+    ygrid=mapFiniteToInfArray(grid,L)
 
     energy=0.5*(eigen[i][0]+eigen[j][0])
     period=2*np.pi/abs(eigen[i][0]-eigen[j][0])
@@ -706,11 +712,11 @@ def checkPeriodTimesXqmax(L,eigen,grid,i,j):
 #Optional inputs are other lines that can be plotted.
 #soar=size of allowed region (determined by energy)
 #cp=classical period (based on initial position) ASSUMES initFVec is a real wavefunction! and times start at 0
-def plotValues(N,L,initFVec,eigen,card,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=False,cp=False):
-    ygrid=[mapFiniteToInf(x,L) for x in grid]
+def plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=False,cp=False):
+    ygrid=mapFiniteToInfArray(grid,L)
 
     t=np.linspace(0,totTime,NumSteps)
-    finalFVecs=timeEvolve(initFVec,t,L,eigen,grid,card)
+    finalFVecs=timeEvolve(initFVec,t,L,eigen,grid)
 
     #arrays of mean position,rms position,mean P, rms P,energy,"classicalEnergy"
     arraysOfVals=[[] for i in xrange(CVNR)]
@@ -743,11 +749,11 @@ def plotValues(N,L,initFVec,eigen,card,grid,d,dd,totTime,NumSteps,ValsToPlot,soa
 #ValsToPlot is a boolean array of length equal to the number of items returned by "checkValues" (stored in CVNR variable)
 def plotValsW(N,L,initFunc,totTime,NumSteps,ValsToPlot,soar=False,cp=False):
     assert len(ValsToPlot)==CVNR
-    eigen,card,grid,d,dd=changeOfVariables(N,L)
+    eigen,_,grid,d,dd=changeOfVariables(N,L)
 
     initFVec=funcToVec(initFunc,grid)
 
-    plotValues(N,L,initFVec,eigen,card,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=soar,cp=cp)
+    plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=soar,cp=cp)
 
 
 
@@ -788,7 +794,7 @@ def getInitFunc(i):
 if __name__=="__main__":
     #L=6.2#good for HO
     L=5.0#good for quartic
-    N=500
+    N=800
     i=0
     j=1
     
@@ -836,4 +842,4 @@ if __name__=="__main__":
 
     #two different check methods
     #plotMeanPositionAndMomentum(N,L,initFVec,eigen,card,grid,2*period)
-    #checkEhrenfest(N,L,initFVec,eigen,card,grid,10.0,.00001)
+    #checkEhrenfestWrapper(initFunc,L,N,0,.0001)
