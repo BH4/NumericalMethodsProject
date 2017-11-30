@@ -5,7 +5,9 @@
 
 
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.rcParams.update({'font.size': 22})
 from SpectralCode import SpectralChebyshevExterior
 import scipy.integrate
 
@@ -298,6 +300,18 @@ def showEigenFunctionsAreOrthonormal(L,numpoints,i,j):
     else:
         print normSquared
 
+def plotResiduals(N,mult,L):
+    Nprime=mult*N
+    rList,_=residuals(L,N,Nprime)
+    rListMax=[max(abs(np.array(x))) for x in rList]
+
+    plt.semilogy(rListMax)
+    plt.title("Number of Grid Points="+str(N)+"\n Larger matrix is "+str(mult)+" times larger.")
+    plt.ylabel("Maximum Residual")
+    plt.xlabel("Eigenvector")
+    plt.show()
+
+
 ###################################################################################
 #Main
 ###################################################################################
@@ -308,11 +322,33 @@ if __name__=="__main__":
     
     ##Checking residuals
     L=5.0
-    N=1000
+    N=200
     #checkResiduals(N,L)
 
-    eigen,card,grid,_,_=changeOfVariables(N,L)
-    hardcoreResidual(L,eigen,1,grid,card)
+    #eigen,card,grid,_,_=changeOfVariables(N,L)
+    #hardcoreResidual(L,eigen,1,grid,card)
+
+    #plotResiduals(N,5,L)
+
+    """
+    num=30
+    offset=0
+    EnergyVals=[[] for i in xrange(num)]#creates array of 30 empty arrays
+    nVals=range(offset+num+40,offset+100)
+    for N in nVals:
+        if N%10==0:
+            print N
+        eigen,_,_,_,_=changeOfVariables(N,L)
+        for i in xrange(num):
+            EnergyVals[i].append(eigen[offset+i][0])
+
+    for i in xrange(num):
+        plt.plot(nVals,EnergyVals[i])
+    plt.title("First "+str(num)+" energy eigenvalues")
+    plt.xlabel("N Value")
+    plt.ylabel("Energy")
+    plt.show()
+    """
 
 
     

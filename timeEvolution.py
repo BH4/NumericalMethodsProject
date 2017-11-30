@@ -1,6 +1,15 @@
 #import mpmath
 import numpy as np
+
+import matplotlib
+IREMEMBEREDTOCHANGEIT=False
+#IREMEMBEREDTOCHANGEIT=True
+#matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+import matplotlib.animation as manimation
+matplotlib.rcParams.update({'font.size': 22})
+
 from EigValAndFunc import changeOfVariables,lookAtTheFunction,hamiltonian,residuals,usingHO
 from SpectralCode import SpectralChebyshevExterior
 #import scipy
@@ -18,7 +27,7 @@ def FWHM(c):
 #E30,~xmax/10,0
 #tol allows the energy to be lower than the minimum energy by that amount.
 #does not transform continuously with its inputs. return type 1 is drastically different (much wider) than return type 2,3
-def initalFunction(minE,maxWidth,offset,tol=.1):
+def initalFunction(minE,maxWidth,offset,tol=.1,output=True):
     minE=float(minE)
     maxWidth=float(maxWidth)
     offset=float(offset)
@@ -32,7 +41,8 @@ def initalFunction(minE,maxWidth,offset,tol=.1):
         if E>minE:
             b=offset
             c=maxWidth
-            print "method",1
+            if output:
+                print "method",1
         else:
             print "No gaussian satisfying the criteria found."
             return None
@@ -44,17 +54,24 @@ def initalFunction(minE,maxWidth,offset,tol=.1):
 
         if len(positive)>0:
             ind=positive.index(min(positive))
-            print "method",2
+            if output:
+                print "method",2
         elif len(alldE)>0:
             ind=alldE.index(max(alldE))
-            print "method",3
+            if output:
+                print "method",3
         else:
             print "No gaussian satisfying the criteria found."
             return None
 
         c=posCVals[ind]
 
-    print 'b='+str(b)+' ,c='+str(c)+' ,energy='+str(gaussianEnergy(b,c))
+    if output:
+        print 'b='+str(b)+' ,c='+str(c)+' ,energy='+str(gaussianEnergy(b,c))
+
+    if isinstance(b, complex) or isinstance(c, complex):
+        print "complex nums..."
+        return None
     gaussian=lambda x:(1/np.sqrt(np.sqrt(np.pi)*c))*np.exp(-1*(x-b)**2/(2.0*c**2))
 
 
@@ -80,8 +97,8 @@ def mapFiniteToInfArray(xgrid,L):
 #tol=10**-3,L=5,mult=5 (2 past 500)
 #nCutoffPreComp={100:4,200:32,300:63,400:96,500:129,600:165,700:195,800:227,900:260,1000:289}
 #after switching to eigenvalue subtraction
-#tol=10**-8,L=5,mult=5 (smaller mult past 500, 2000 is a guess)
-nCutoffPreComp={100:11,200:47,300:83,400:120,500:157,600:192,700:227,800:260,900:294,1000:327,2000:654}
+#tol=10**-8,L=5,mult=5 (smaller mult past 500, 2000 is a guess) (2 for the ones ending in 50)
+nCutoffPreComp={100:11,150:28,200:47,250:65,300:83,350:102,400:120,450:138,500:157,550:175,600:192,650:209,700:227,750:243,800:260,850:277,900:294,950:311,1000:327,1500:485,2000:654}
 
 def preComputeCutoff(N,mult,L,tol):
     Nprime=mult*N
@@ -356,7 +373,7 @@ def timeEvolve(fVec,t,L,eigen,grid):
 
         overlap=innerProduct(fVec,eigenV,grid,L)#<n|f>
         almostLastO=lastOverlap
-        lastOverlap=overlap
+        lastOverlap=abs(overlap)
 
         evoOperator=np.exp(-1j*eigenE*t)
 
@@ -369,7 +386,7 @@ def timeEvolve(fVec,t,L,eigen,grid):
             PsiT+=nextVals
 
     tol=10**(-8)#arbitrary 8
-    if abs(lastOverlap)>tol or abs(almostLastO)>tol:
+    if lastOverlap>tol or almostLastO>tol:
         print "warning: overlap was not small before nCutoff reached"
         print max(lastOverlap,almostLastO)
 
@@ -459,11 +476,12 @@ def timeEvolveWrapper(f,N,t,L):
 
 #first construct the time evolved state then calculate its residual
 def timeResidual(initFVec,L,eigen,card,grid,Nprime,t):
+
     N=len(grid)
 
     nCutoff=nCutoffPreComp[N]
 
-    finalFVec=timeEvolve(initFVec,t,L,eigen,grid)
+    finalFVecList=timeEvolve(initFVec,t,L,eigen,grid)
 
     #bigger stuff
     bigGrid,dB,ddB,_=SpectralChebyshevExterior(-1,1,Nprime)
@@ -472,23 +490,33 @@ def timeResidual(initFVec,L,eigen,card,grid,Nprime,t):
     g=lambda x: sum([initFVec[i]*card[i](x) for i in xrange(len(initFVec))])
     interpInitVec=g(bigGrid)
 
-    f=lambda x: sum([finalFVec[i]*card[i](x) for i in xrange(len(finalFVec))])
-    interpFinalVec=f(bigGrid)
-
-    R=bigH.dot(interpFinalVec)
+    interpEigVList=[]
     for i in xrange(0,nCutoff):
         eigenE,eigenV=eigen[i]
-
-
         eigenFunc=lambda x: sum([eigenV[i]*card[i](x) for i in xrange(len(eigenV))])
         interpEigV=eigenFunc(bigGrid)
+        interpEigVList.append(interpEigV)
 
-        evoOperator=np.exp(-1j*eigenE*t)
-        overlap=innerProduct(interpInitVec,interpEigV,bigGrid,L)
+    RList=[]
+    for j,finalFVec in enumerate(finalFVecList):
+        print j
+        f=lambda x: sum([finalFVec[i]*card[i](x) for i in xrange(len(finalFVec))])
+        interpFinalVec=f(bigGrid)
 
-        R-=eigenE*evoOperator*interpEigV*overlap
+        R=bigH.dot(interpFinalVec)
+        for i in xrange(0,nCutoff):
+            eigenE,eigenV=eigen[i]
 
-    return R,bigGrid,interpFinalVec
+
+            interpEigV=interpEigVList[i]
+
+            evoOperator=np.exp(-1j*eigenE*t[j])
+            overlap=innerProduct(interpInitVec,interpEigV,bigGrid,L)
+
+            R-=eigenE*evoOperator*interpEigV*overlap
+        RList.append(R)
+
+    return RList,bigGrid,interpFinalVec
 
 def timeResidualWrapper(initFunc,L,N,Nprime,t):
     eigen,card,grid,_,_=changeOfVariables(N,L)
@@ -526,19 +554,37 @@ def residualOfEigSuperposition(N,L,i,j,t):
     plt.ylim(0,1)
     plt.show()
 
-def residualOfGaussian(N,L,t):
-    initFunc=initalFunction(10.0,1.0,1.0)
+def residualOfGaussian(N,L,t,mult,minE,maxWidth,offset):
+    initFunc=initalFunction(minE,maxWidth,offset)
 
-    Nprime=N*5
+    Nprime=N*mult
 
     R,bigGrid,interpFinalVec=timeResidualWrapper(initFunc,L,N,Nprime,t)
 
     y=mapFiniteToInfArray(bigGrid,L)
     #y=np.array(y)
-    plt.plot(y,abs(R))
+    plt.plot(y,abs(R),color='red')
     plt.plot(y,abs(interpFinalVec))
     plt.xlim(-50,50)
     plt.ylim(-1,1)
+    plt.show()
+
+def maxResidualOfGaussianPlot(N,L,t,mult,minE,maxWidth,offset):
+    initFunc=initalFunction(minE,maxWidth,offset)
+
+    Nprime=N*mult
+
+    R,_,_=timeResidualWrapper(initFunc,L,N,Nprime,t)
+
+    
+    maxRs=[]
+    for curr in R:
+        maxRs.append(max(abs(curr)))
+
+    plt.plot(t,maxRs,color='red')
+    plt.title("Maximum Residual as Gaussian is time evolved\n Number of Grid Points="+str(N)+". Larger matrix is "+str(mult)+" times larger.")
+    plt.xlabel("Time")
+    plt.ylabel("Max Residual")
     plt.show()
 
 ###################################################################################
@@ -547,49 +593,65 @@ def residualOfGaussian(N,L,t):
 
 #if cardinal funcitons are supplied then the plots will be interpolated functions of 2000 evenly spaced points
 def makeMovie(finalFVecs,grid,times,initFVec=None,card=None,d=None,dd=None,printValues=False,showGraph=True):
+    if not IREMEMBEREDTOCHANGEIT:
+        print "you forgot to change the thing at the top"
+        return None
+
+    plt.rcParams['animation.ffmpeg_path'] = 'C:\\ffmpeg\\bin\\ffmpeg.exe'
+    
+    FFMpegWriter = manimation.writers['ffmpeg']
+    writer = FFMpegWriter(fps=30)
+
     ygrid=mapFiniteToInfArray(grid,L)
 
     if (not showGraph) and (not printValues):
         print "This function has no purpose if you do nothing."
         return None
 
-    for i,finalFVec in enumerate(finalFVecs):
-        print "At t="+str(round(times[i],8))
-        
-        if printValues and (not d is None) and (not dd is None):
-            checkValues(finalFVec,ygrid,L,d,dd,r=5,output=True)
-            print '-'*50
-        
-        if showGraph:
-            if not initFVec is None:
-                plt.plot(ygrid,abs(initFVec)**2)
-            if not card is None:
-                finalF=lookAtTheFunction(L,finalFVec,card)
-                y=np.linspace(-5,5,2000)
-                plt.plot(y,abs(finalF(y))**2)
-            else:
-                plt.plot(ygrid,abs(finalFVec)**2)
-            
-            if usingHO:
-                potential=lambda y:(y**4)/4
-            else:
-                potential=lambda y:(y**4)/4
+    fig=plt.figure()
 
-            y=np.linspace(-5,5,100)
-            plt.plot(y,potential(y))
-            plt.xlim(-5,5)
-            plt.ylim(0,3)
-            plt.show()
+    dpi=100
+    with writer.saving(fig, "writer_test.mp4", dpi):
+        for i,finalFVec in enumerate(finalFVecs):
+            
+            if printValues and (not d is None) and (not dd is None):
+                print "At t="+str(round(times[i],8))
+                checkValues(finalFVec,ygrid,L,d,dd,r=5,output=True)
+                print '-'*50
+            
+            if showGraph:
+                if not initFVec is None:
+                    plt.plot(ygrid,abs(initFVec)**2)
+                if not card is None:
+                    finalF=lookAtTheFunction(L,finalFVec,card)
+                    y=np.linspace(-5,5,2000)
+                    plt.plot(y,abs(finalF(y))**2)
+                else:
+                    plt.plot(ygrid,abs(finalFVec)**2)
+                
+                if usingHO:
+                    potential=lambda y:(y**2)/2
+                else:
+                    potential=lambda y:(y**4)/4
+
+                y=np.linspace(-7,7,100)
+                l,=plt.plot(y,potential(y))
+                plt.xlim(-7,7)
+                plt.ylim(0,3)
+                #plt.show()
+                writer.grab_frame()
+                plt.clf()
+
 
 #interesting vals (1000,5.0,80,.426,5.0)
-def GaussianTimeEvoMovie(N,L,minE,maxWidth,offset):
+def GaussianTimeEvoMovie(N,L,minE,maxWidth,offset,totTime,numFrames):
     initF=initalFunction(minE,maxWidth,offset)
     #t=np.linspace(0.0,15*np.pi,16)
     #t=np.linspace(0.0,2*np.pi,15)
-    t=np.linspace(0.0,1.0,20)
+    t=np.linspace(0.0,totTime,numFrames)
     finalFVecs,card,grid,d,dd,initFVec=timeEvolveWrapper(initF,N,t,L)
 
-    makeMovie(finalFVecs,grid,t,initFVec=initFVec,card=None,d=d,dd=dd,printValues=True,showGraph=True)
+    makeMovie(finalFVecs,grid,t,initFVec=initFVec,card=None,d=d,dd=dd,printValues=False,showGraph=True)
 
 
 def superPositionEigenFuncMovie(N,L,i,j):
@@ -613,7 +675,7 @@ def superPositionManyEigenFuncMovie(N,L,i):
 def printOverlapWithTime(N,L,i,j):
     eigen,_,grid,_,_=changeOfVariables(N,L)
     if i==-1 or j==-1:
-        initF=initalFunction(10.0,.426,1.0)
+        initF=initalFunction(0.0,.4,6.0)
         fVec=[]
         for i,xi in enumerate(grid):
             if i==0 or i==len(grid)-1:
@@ -623,7 +685,7 @@ def printOverlapWithTime(N,L,i,j):
                 fVec.append(initF(yi))
 
         initFVec=np.array(fVec)
-        t=np.linspace(0.0,2.0,20)
+        t=np.linspace(0.0,2000.0,20)
     else:
     
         period=2*np.pi/abs(eigen[i][0]-eigen[j][0])
@@ -664,7 +726,11 @@ def checkEhrenfest(N,L,initFVec,eigen,grid,d,dd,tinit,dt):
 
     ygrid=mapFiniteToInfArray(grid,L)
 
-    t=[tinit+0*dt,tinit+1*dt,tinit+2*dt]
+    #t=[tinit+0*dt,tinit+1*dt,tinit+2*dt]
+    t0=tinit
+    t1=tinit+1*dt
+    t2=tinit+2*dt
+    t=np.concatenate((t0,t1,t2))
     finalFVecs=timeEvolve(initFVec,t,L,eigen,grid)
     meanX=[]
     meanP=[]
@@ -674,13 +740,21 @@ def checkEhrenfest(N,L,initFVec,eigen,grid,d,dd,tinit,dt):
         meanX3.append(meanPositionPower(finalFVec,ygrid,L,3))
         meanX.append(meanXt)
         meanP.append(meanPt)
-    print energyt
+    #print energyt
 
-    print str((meanX[2]-meanX[0])/(2*dt))+'='+str(meanP[1])
-    if usingHO:
-        print str((meanP[2]-meanP[0])/(2*dt))+'='+str(-1*meanX[1])
-    else:
-        print str((meanP[2]-meanP[0])/(2*dt))+'='+str(-1*meanX3[1])
+
+    WL=len(tinit)
+    for i in xrange(WL):
+        #print str((meanX[2]-meanX[0])/(2*dt))+'='+str(meanP[1])
+        print ((meanX[i+2*WL]-meanX[i])/(2*dt))-meanP[i+WL]
+        if usingHO:
+            #print str((meanP[2]-meanP[0])/(2*dt))+'='+str(-1*meanX[1])
+            print ((meanP[i+2*WL]-meanP[i])/(2*dt))-(-1*meanX[i+WL])
+        else:
+            #print str((meanP[2]-meanP[0])/(2*dt))+'='+str(-1*meanX3[1])
+            print ((meanP[i+2*WL]-meanP[i])/(2*dt))-(-1*meanX3[i+WL])
+
+        print '-'*44
 
 def checkEhrenfestWrapper(initFunc,L,N,tinit,dt):
     eigen,_,grid,d,dd=changeOfVariables(N,L)
@@ -704,17 +778,70 @@ def checkPeriodTimesXqmax(L,eigen,grid,i,j):
     print period*xqmax
     return period,xqmax
 
+def plotGaussianCvsRequiredN(L,tol=10**(-8)):
+    N=2000
+
+    points=100
+
+    eigen,card,grid,d,dd=changeOfVariables(N,L)
+    print "got eigen"
+
+    cList=np.linspace(.06,1,points)
+    requiredNVals=[]
+    for j,c in enumerate(cList):
+        if j%(points/10)==0 and j>0:
+            print cList[j-1],requiredNVals[-1]
+            print float(j)/points
+
+
+        f=lambda x:(1/np.sqrt(np.sqrt(np.pi)*c))*np.exp(-1*(x)**2/(2.0*c**2))
+        fVec=funcToVec(f,grid)
+        fVec=np.array(fVec)
+
+        nCutoff=nCutoffPreComp[N]
+
+
+
+        lastOverlap=10**5
+        almostLastO=10**5
+        i=0
+        while (lastOverlap>tol or almostLastO>tol) and i<nCutoff:
+            eigenE,eigenV=eigen[i]
+
+            overlap=innerProduct(fVec,eigenV,grid,L)#<n|f>
+            almostLastO=lastOverlap
+            lastOverlap=abs(overlap)
+
+            i+=1
+
+        if i==nCutoff:
+            print "Inaccurate graph...",c
+
+        requiredNVals.append(i)
+
+    plt.plot(cList,requiredNVals)
+    plt.title("Number of eigenvectors to represent Gaussian at the origin.\nTolerance="+str(tol)+" L="+str(L))
+    plt.ylabel("Number of eigenvectors")
+    plt.xlabel("Standard deviation of Gaussian")
+    plt.ylim(0,700)
+    plt.show()
+                
+
+
 
 ###################################################################################
 #Presentation/Report graphs
 ###################################################################################
 
 #Optional inputs are other lines that can be plotted.
-#soar=size of allowed region (determined by energy)
+#soar=size of allowed region (determined by initial <x>)
+#car=classically allowed region
 #cp=classical period (based on initial position) ASSUMES initFVec is a real wavefunction! and times start at 0
-def plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=False,cp=False):
+def plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=False,cp=False,car=False,title=None):
     ygrid=mapFiniteToInfArray(grid,L)
 
+    if usingHO:
+        totTime=5*2*np.pi
     t=np.linspace(0,totTime,NumSteps)
     finalFVecs=timeEvolve(initFVec,t,L,eigen,grid)
 
@@ -733,27 +860,49 @@ def plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=Fal
         if ValsToPlot[i]:
             plt.plot(t,arraysOfVals[i],label=VALNAMES[i])
 
+    xmax=arraysOfVals[0][0]
+    xqmax=0
     if soar or cp:
-        xqmax=(4.0*arraysOfVals[4][0])**(.25)
-        if soar:
-            plt.plot((t[0], t[-1]), (xqmax, xqmax), 'k-')
-            plt.plot((t[0], t[-1]), (-xqmax, -xqmax), 'k-')
-        if cp:
+        if usingHO:
+            clPeriod=2*np.pi
+        else:
             clPeriod=4*np.sqrt(2)*1.31103/arraysOfVals[0][0]
-            for i in xrange(int(totTime/clPeriod)+1):
-                plt.plot((i*clPeriod, i*clPeriod), (-xqmax, xqmax), 'k-')
 
-    plt.legend()
+        if soar:
+            plt.plot((t[0], t[-1]), (xmax, xmax), 'k-')
+            plt.plot((t[0], t[-1]), (-xmax, -xmax), 'k-')
+        if cp:
+            for i in xrange(int(totTime/clPeriod)+1):
+                plt.plot((i*clPeriod, i*clPeriod), (-xmax, xmax), 'k-')
+    
+    if car:
+        if usingHO:
+            xqmax=(2.0*arraysOfVals[4][0])**(.5)
+        else:
+            xqmax=(4.0*arraysOfVals[4][0])**(.25)
+        
+        plt.plot((t[0], t[-1]), (xqmax, xqmax), 'k-')
+        plt.plot((t[0], t[-1]), (-xqmax, -xqmax), 'k-')
+
+
+    if not title is None:
+        plt.title(title)
+
+    #plt.xlabel("Time")
+    #plt.ylabel("Units of Position")
+    ym=max([xmax,xqmax])+1
+    plt.ylim(-ym,ym)
+    plt.legend(loc=4)
     plt.show()
 
 #ValsToPlot is a boolean array of length equal to the number of items returned by "checkValues" (stored in CVNR variable)
-def plotValsW(N,L,initFunc,totTime,NumSteps,ValsToPlot,soar=False,cp=False):
+def plotValsW(N,L,initFunc,totTime,NumSteps,ValsToPlot,soar=False,cp=False,car=False,title=None):
     assert len(ValsToPlot)==CVNR
     eigen,_,grid,d,dd=changeOfVariables(N,L)
 
     initFVec=funcToVec(initFunc,grid)
 
-    plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=soar,cp=cp)
+    plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=soar,cp=cp,car=car,title=title)
 
 
 
@@ -794,18 +943,32 @@ def getInitFunc(i):
 if __name__=="__main__":
     #L=6.2#good for HO
     L=5.0#good for quartic
-    N=800
+    N=1000
     i=0
     j=1
     
 
-    initFunc=initalFunction(80.0,0.426,6.0)
-    #quickCheckValuesW(N,L,initFunc)
-    #print '-'*50
-    #plotValsW(N,L,initFunc,3,200,[1,0,1,0,1,0])
-    plotValsW(N,L,initFunc,12,400,[1,0,0,0,0,0],soar=False,cp=True)
-    #plotValsW(N,L,initFunc,12,400,[0,1,0,0,0,0],soar=True,cp=True)
-
+    #["Mean Position","RMS Position","Mean Momentum","RMS Momentum","Energy","Classical Energy"]
+    initFunc=initalFunction(0.0,0.056,1.0)
+    #plotValsW(N,9.0,initFunc,12,400,[1,1,0,0,0,0],soar=True,cp=True,car=False,title="Initial Gaussian with b=1 and c=0.056")
+    
+    #initFunc=initalFunction(0.0,0.4,6.0)
+    #plotValsW(N,L,initFunc,12,400,[1,1,0,0,0,0],soar=True,cp=True,car=False,title="Initial Gaussian with b=6 and c=0.4")
+    
+    #plotGaussianCvsRequiredN(9.0)
+    #plotGaussianCvsRequiredN(5.0)
+    
+    """
+    plt.plot(sorted(nCutoffPreComp.keys()),sorted(nCutoffPreComp.values()))
+    plt.xticks(range(0,2001,200))
+    plt.title("Largest Trusted Eigenvalues with L=5.0")
+    plt.xlabel("Number of Grid Points")
+    plt.ylabel("Cutoff eigenvalue")
+    plt.show()
+    """
+    
+    #maxResidualOfGaussianPlot(1000,L,np.linspace(0,12,100),2,0,.4,6.0)
+    #maxResidualOfGaussianPlot(1000,9.0,np.linspace(0,12,100),2,0,.056,1.0)
 
     #######################
     #Example function calls
@@ -813,21 +976,36 @@ if __name__=="__main__":
 
     
     ##quickly print off some energy levels
-    #printEnergyLevels([0,30],getRidOf2and4=False)
+    #printEnergyLevels([326],getRidOf2and4=False)
 
     ##precompute cutoffs at different values of N,mult,L,tol
-    #preComputeCutoff(200,2,5.0,10**(-8))
+    #test=[50,150,250,350,450,550,650,750,850,950,1500]
+    #for t in test:
+    #    preComputeCutoff(t,2,5.0,10**(-8))
+    #500 166 7
+    #preComputeCutoff(1000,2,10,10**(-8))
+    #preComputeCutoff(500,2,8.0,10**(-8))
 
     ##Residual of gaussian
-    #t=10.0
-    #residualOfGaussian(N,L,t)
+    #t=20000000000.0
+    #residualOfGaussian(N,L,t,5,0,.4,1.0)
 
     ##Residual of superposition of eigenFunctions at specified time
     #residualOfEigSuperposition(N,L,0,1,10.0)
     
 
-    ##Gaussian time evolve movie.
-    #GaussianTimeEvoMovie(N,L,80,.426,5.0)
+    ##Gaussian time evolve movie. x^4
+    #numFrames=300
+    #totTime=4.0
+    #GaussianTimeEvoMovie(1000,5.0,80,.4,6.0,totTime,numFrames)
+    ##Gaussian time evolve movie. x^2
+    #numFrames=300
+    #totTime=np.pi*4
+    #GaussianTimeEvoMovie(1000,5.0,80,.4,6.0,totTime,numFrames)
+    #numFrames=600
+    #totTime=4.0
+    #GaussianTimeEvoMovie(2000,9.0,0,.056,1.0,totTime,numFrames)
+
 
 
     ##Time evolve 'video' of superposition of states
@@ -838,8 +1016,11 @@ if __name__=="__main__":
 
 
     ##print overlaps
-    #printOverlapWithTime(N,L,-1,1)
+    #printOverlapWithTime(N,L,-1,-1)
 
     #two different check methods
     #plotMeanPositionAndMomentum(N,L,initFVec,eigen,card,grid,2*period)
-    #checkEhrenfestWrapper(initFunc,L,N,0,.0001)
+
+    dt=.000001
+    initT=np.array([0,1,2,3,4,5,6,10])
+    checkEhrenfestWrapper(initFunc,9.0,N,initT,dt)
