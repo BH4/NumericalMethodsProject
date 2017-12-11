@@ -180,7 +180,7 @@ def setupSuperpositionOfEigenStates(N,L,inds,output=False):
     return eigen,card,grid,d,dd,initFVec,period,energy
 
 #assumes function is defined from -inf to inf
-def funcToVec(func,grid):
+def funcToVec(func,grid,L):
     vec=[]
     for i,xi in enumerate(grid):
         if i==0 or i==len(grid)-1:
@@ -314,7 +314,7 @@ def checkValues(vec,ygrid,L,d,dd,r=4,output=False):
 
 def quickCheckValuesW(N,L,func):
     _,_,grid,d,dd=changeOfVariables(N,L)
-    fVec=funcToVec(func,grid)
+    fVec=funcToVec(func,grid,L)
     ygrid=mapFiniteToInfArray(grid,L)
     checkValues(fVec,ygrid,L,d,dd,output=True)
 
@@ -461,7 +461,7 @@ def timeEvolve(fVec,t,L,eigen,grid,card):
 def timeEvolveWrapper(f,N,t,L):
     eigen,card,grid,d,dd=changeOfVariables(N,L)
 
-    fVec=funcToVec(f,grid)
+    fVec=funcToVec(f,grid,L)
 
     fVec=np.array(fVec)
 
@@ -521,7 +521,7 @@ def timeResidual(initFVec,L,eigen,card,grid,Nprime,t):
 def timeResidualWrapper(initFunc,L,N,Nprime,t):
     eigen,card,grid,_,_=changeOfVariables(N,L)
 
-    fVec=funcToVec(initFunc,grid)
+    fVec=funcToVec(initFunc,grid,L)
 
     fVec=np.array(fVec)
 
@@ -759,7 +759,7 @@ def checkEhrenfest(N,L,initFVec,eigen,grid,d,dd,tinit,dt):
 def checkEhrenfestWrapper(initFunc,L,N,tinit,dt):
     eigen,_,grid,d,dd=changeOfVariables(N,L)
 
-    initFVec=funcToVec(initFunc,grid)
+    initFVec=funcToVec(initFunc,grid,L)
 
     initFVec=np.array(initFVec)
 
@@ -778,6 +778,7 @@ def checkPeriodTimesXqmax(L,eigen,grid,i,j):
     print period*xqmax
     return period,xqmax
 
+#Plot should be independent of L
 def plotGaussianCvsRequiredN(L,tol=10**(-8)):
     N=2000
 
@@ -795,7 +796,7 @@ def plotGaussianCvsRequiredN(L,tol=10**(-8)):
 
 
         f=lambda x:(1/np.sqrt(np.sqrt(np.pi)*c))*np.exp(-1*(x)**2/(2.0*c**2))
-        fVec=funcToVec(f,grid)
+        fVec=funcToVec(f,grid,L)
         fVec=np.array(fVec)
 
         nCutoff=nCutoffPreComp[N]
@@ -826,7 +827,39 @@ def plotGaussianCvsRequiredN(L,tol=10**(-8)):
     plt.ylim(0,700)
     plt.show()
                 
+def testGaussianCvsRequiredN(L,c,tol=10**(-8)):
+    N=1000
 
+    eigen,card,grid,d,dd=changeOfVariables(N,L)
+    print "got eigen"
+
+    f=lambda x:(1/np.sqrt(np.sqrt(np.pi)*c))*np.exp(-1*(x)**2/(2.0*c**2))
+    fVec=funcToVec(f,grid,L)
+    fVec=np.array(fVec)
+
+    nCutoff=nCutoffPreComp[N]
+
+
+    lastOverlap=10**5
+    almostLastO=10**5
+    i=0
+    overlapList=[]
+    while (lastOverlap>tol or almostLastO>tol) and i<nCutoff:
+        eigenE,eigenV=eigen[i]
+
+        overlap=innerProduct(fVec,eigenV,grid,L)#<n|f>
+        almostLastO=lastOverlap
+        lastOverlap=abs(overlap)
+
+        overlapList.append(abs(overlap))
+
+        i+=1
+
+    if i==nCutoff:
+        print "Inaccurate graph...",c
+
+    print i
+    print overlapList[:i]
 
 
 ###################################################################################
@@ -837,6 +870,7 @@ def plotGaussianCvsRequiredN(L,tol=10**(-8)):
 #soar=size of allowed region (determined by initial <x>)
 #car=classically allowed region
 #cp=classical period (based on initial position) ASSUMES initFVec is a real wavefunction! and times start at 0
+colors=['b','g','r','c','m','y','k']
 def plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=False,cp=False,car=False,title=None):
     ygrid=mapFiniteToInfArray(grid,L)
 
@@ -858,7 +892,7 @@ def plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=Fal
 
     for i in xrange(CVNR):
         if ValsToPlot[i]:
-            plt.plot(t,arraysOfVals[i],label=VALNAMES[i])
+            plt.plot(t,arraysOfVals[i],label=VALNAMES[i],color=colors[i])
 
     xmax=arraysOfVals[0][0]
     xqmax=0
@@ -890,7 +924,7 @@ def plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=Fal
 
     #plt.xlabel("Time")
     #plt.ylabel("Units of Position")
-    ym=max([xmax,xqmax])+1
+    ym=max([xmax,xqmax])+4
     plt.ylim(-ym,ym)
     plt.legend(loc=4)
     plt.show()
@@ -900,7 +934,7 @@ def plotValsW(N,L,initFunc,totTime,NumSteps,ValsToPlot,soar=False,cp=False,car=F
     assert len(ValsToPlot)==CVNR
     eigen,_,grid,d,dd=changeOfVariables(N,L)
 
-    initFVec=funcToVec(initFunc,grid)
+    initFVec=funcToVec(initFunc,grid,L)
 
     plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=soar,cp=cp,car=car,title=title)
 
@@ -944,17 +978,20 @@ if __name__=="__main__":
     #L=6.2#good for HO
     L=5.0#good for quartic
     N=1000
-    i=0
-    j=1
+    #i=0
+    #j=1
     
 
     #["Mean Position","RMS Position","Mean Momentum","RMS Momentum","Energy","Classical Energy"]
     initFunc=initalFunction(0.0,0.056,1.0)
-    #plotValsW(N,9.0,initFunc,12,400,[1,1,0,0,0,0],soar=True,cp=True,car=False,title="Initial Gaussian with b=1 and c=0.056")
-    
+    plotValsW(2000,9.0,initFunc,12,400,[1,1,0,0,0,0],soar=True,cp=True,car=False,title="Initial Gaussian with b=1 and c=0.056")
+
     #initFunc=initalFunction(0.0,0.4,6.0)
     #plotValsW(N,L,initFunc,12,400,[1,1,0,0,0,0],soar=True,cp=True,car=False,title="Initial Gaussian with b=6 and c=0.4")
     
+
+    #testGaussianCvsRequiredN(5,.1)
+    #testGaussianCvsRequiredN(9,.1)
     #plotGaussianCvsRequiredN(9.0)
     #plotGaussianCvsRequiredN(5.0)
     
@@ -983,7 +1020,7 @@ if __name__=="__main__":
     #for t in test:
     #    preComputeCutoff(t,2,5.0,10**(-8))
     #500 166 7
-    #preComputeCutoff(1000,2,10,10**(-8))
+    #preComputeCutoff(1000,2,9,10**(-8))
     #preComputeCutoff(500,2,8.0,10**(-8))
 
     ##Residual of gaussian
@@ -1021,6 +1058,6 @@ if __name__=="__main__":
     #two different check methods
     #plotMeanPositionAndMomentum(N,L,initFVec,eigen,card,grid,2*period)
 
-    dt=.000001
-    initT=np.array([0,1,2,3,4,5,6,10])
-    checkEhrenfestWrapper(initFunc,9.0,N,initT,dt)
+    #dt=.000001
+    #initT=np.array([0,1,2,3,4,5,6,10])
+    #checkEhrenfestWrapper(initFunc,9.0,N,initT,dt)
