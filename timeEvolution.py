@@ -984,7 +984,7 @@ if __name__=="__main__":
 
     #["Mean Position","RMS Position","Mean Momentum","RMS Momentum","Energy","Classical Energy"]
     initFunc=initalFunction(0.0,0.056,1.0)
-    plotValsW(2000,9.0,initFunc,12,400,[1,1,0,0,0,0],soar=True,cp=True,car=False,title="Initial Gaussian with b=1 and c=0.056")
+    plotValsW(2000,9.0,initFunc,12,400,[1,1,0,0,0,0],soar=True,cp=True,car=True,title="Initial Gaussian with b=1 and c=0.056")
 
     #initFunc=initalFunction(0.0,0.4,6.0)
     #plotValsW(N,L,initFunc,12,400,[1,1,0,0,0,0],soar=True,cp=True,car=False,title="Initial Gaussian with b=6 and c=0.4")
