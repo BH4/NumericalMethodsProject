@@ -19,7 +19,7 @@ import scipy.integrate
 #basically multiply the cardinal functions by the vector.
 #changes variable back to entire real line variable. Don't use this for actual math.
 def lookAtTheFunction(L,vec,card):
-    f=lambda y: sum([vec[i]*card[i](y/np.sqrt(L**2+y**2)) for i in xrange(len(vec))])
+    f=lambda y: sum([vec[i]*card[i](y/np.sqrt(L**2+y**2)) for i in range(len(vec))])
     return f
 
 #returns the square root of the squared integral. Useful to check if a function is really normalized.
@@ -134,7 +134,7 @@ def normalizeVector(L,vec,grid):
 
     total=0
     #takes the values 1,2,...,N-3,N-2   -> no endpoints
-    for i in xrange(1,N-1):
+    for i in range(1,N-1):
         weight=(np.pi/(N-1))
         g=(L/(1-grid[i]**2))*vec[i]**2
 
@@ -159,7 +159,7 @@ def changeOfVariables(numpoints,L):
     H=hamiltonian(L,grid,d,dd)
 
     vals,vecs=np.linalg.eig(H)
-    eigen=[(vals[i],vecs[:,i]) for i in xrange(len(vals))]
+    eigen=[(vals[i],vecs[:,i]) for i in range(len(vals))]
 
     eigen.sort(key=lambda x:x[0])
 
@@ -169,7 +169,7 @@ def changeOfVariables(numpoints,L):
     #normalize all eigenvectors on entire real line variable
     #This WILL change the residual since I am multiplying the residual of each eigenfunction by an overall number.
     #could simplify this by putting it directly in the loop above, but I kinda want to keep it separate from everything else
-    for i in xrange(len(eigen)):
+    for i in range(len(eigen)):
         newEigV=normalizeVector(L,eigen[i][1],grid)
         eigen[i]=(eigen[i][0],newEigV)
     
@@ -185,7 +185,7 @@ def changeOfVariables(numpoints,L):
 #THIS METHOD IS CREATING LARGE INCORRECT RESIDUALS. I believe they are incorrect because the larger eigenvector is more similar to the interpolated eigenvector than the large residual would imply.
 #The large error in this method must be coming from the derivative term in the Hamiltonian.
 def calcR(bigH,bigGrid,E,vec,card):
-    f=lambda x: sum([vec[i]*card[i](x) for i in xrange(len(vec))])
+    f=lambda x: sum([vec[i]*card[i](x) for i in range(len(vec))])
     interpVec=f(bigGrid)
     #print interpVec
     #print bigH.dot(interpVec)
@@ -209,9 +209,9 @@ def residuals(L,N,Nprime):
 
 
     rList=[]#list of residual vectors
-    for i in xrange(len(eigen)):
+    for i in range(len(eigen)):
         eigenE,eigenV=eigen[i]
-        f=lambda x: sum([eigenV[i]*cardS[i](x) for i in xrange(len(eigenV))])
+        f=lambda x: sum([eigenV[i]*cardS[i](x) for i in range(len(eigenV))])
         interpVec=f(gridB)
 
         #rList.append(calcR(HB,gridB,eigenE,eigenV,cardS))
@@ -228,9 +228,9 @@ def residualsWithoutRecalculation(L,Nprime,eigen,cardS):
     eigenB,_,gridB,_,_=changeOfVariables(Nprime,L)
 
     rList=[]#list of residual vectors
-    for i in xrange(len(eigen)):
+    for i in range(len(eigen)):
         eigenE,eigenV=eigen[i]
-        f=lambda x: sum([eigenV[i]*cardS[i](x) for i in xrange(len(eigenV))])
+        f=lambda x: sum([eigenV[i]*cardS[i](x) for i in range(len(eigenV))])
         interpVec=f(gridB)
 
         #rList.append(calcR(HB,gridB,eigenE,eigenV,cardS))
@@ -247,7 +247,7 @@ def hardcoreResidual(L,eigen,i,grid,card):
     R=[]
     for i,yi in enumerate(y):
         if i%100==0:
-            print i
+            print(i)
         if usingHO:
             temp=energy*func(yi)+scipy.misc.derivative(func,yi,dx=0.001,n=2,order=5)/2-((yi**2)/2.0)*func(yi)
         else:
@@ -273,9 +273,9 @@ def checkResiduals(N,L):
     #check=[80,100,120,150,180,200,250,270]
     for i in check:
         biggest=max(abs(rList[i]))
-        print 'WF '+str(i)+': Max Error='+str(biggest)
+        print('WF '+str(i)+': Max Error='+str(biggest))
 
-        eigeni=lambda x: sum([eigen[i][1][j]*card[j](x) for j in xrange(len(eigen[i][1]))])
+        eigeni=lambda x: sum([eigen[i][1][j]*card[j](x) for j in range(len(eigen[i][1]))])
         plt.plot(grid,eigeni(grid))
         plt.plot(gridS,eigen[i][1])
         plt.plot(grid,abs(rList[i]),color='red')
@@ -296,9 +296,9 @@ def showEigenFunctionsAreOrthonormal(L,numpoints,i,j):
     normSquared,err=scipy.integrate.quad(squaredFunc,-np.inf,np.inf)
 
     if abs(normSquared)<err:
-        print "within error of zero"
+        print("within error of zero")
     else:
-        print normSquared
+        print(normSquared)
 
 def plotResiduals(N,mult,L):
     Nprime=mult*N

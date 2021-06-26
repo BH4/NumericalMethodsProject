@@ -39,22 +39,22 @@ def SpectralChebyshevExterior(xmin,xmax,numpoints):
 
     t=lambda x: np.arccos((x-b)/m)
 
-    tp=[np.pi*i/float(npm1) for i in xrange(numpoints)]
+    tp=[np.pi*i/float(npm1) for i in range(numpoints)]
 
     sp=np.cos(tp)
 
     xp=m*sp+b
 
-    p=[2.0 if i==0 or i==numpoints-1 else 1.0 for i in xrange(numpoints)]
+    p=[2.0 if i==0 or i==numpoints-1 else 1.0 for i in range(numpoints)]
 
     card=[]
-    for i in xrange(numpoints):
+    for i in range(numpoints):
         card.append(SpectralChebyshevExteriorCard(i,numpoints,npm1,tp,t))
 
     d=[]
-    for i in xrange(numpoints):
+    for i in range(numpoints):
         row=[]
-        for j in xrange(numpoints):
+        for j in range(numpoints):
             if i!=j:
                 mij=(-1)**(i+j)*(p[i]/p[j])/(sp[i]-sp[j])
             elif i==0 and j==0:
@@ -83,20 +83,20 @@ def SpectralChebyshevInterior(xmin,xmax,numpoints):
 
     t=lambda x: np.arccos((x-b)/m)
 
-    tp=[np.pi*(i-.5)/numpoints for i in xrange(numpoints)]
+    tp=[np.pi*(i-.5)/numpoints for i in range(numpoints)]
 
     sp=np.cos(tp)
 
     xp=m*sp+b
 
     card=[]
-    for i in xrange(numpoints):
+    for i in range(numpoints):
         card.append(SpectralChebyshevInteriorCard(i,numpoints,tp,t))
 
     d=[]
-    for i in xrange(numpoints):
+    for i in range(numpoints):
         row=[]
-        for j in xrange(numpoints):
+        for j in range(numpoints):
             if i!=j:
                 mij=(-1)**(i+j)*np.sqrt((1-sp[j]**2)/(1 - sp[i]**2))/(sp[i] - sp[j])
             else:
@@ -106,9 +106,9 @@ def SpectralChebyshevInterior(xmin,xmax,numpoints):
     d=np.array(d)
 
     dd=[]
-    for i in xrange(numpoints):
+    for i in range(numpoints):
         row=[]
-        for j in xrange(numpoints):
+        for j in range(numpoints):
             if i!=j:
                 mij=d[i][j]*(sp[i]/(1 - sp[i]**2) - 2/(sp[i]-sp[j]))
             else:

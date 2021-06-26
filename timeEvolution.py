@@ -42,9 +42,9 @@ def initalFunction(minE,maxWidth,offset,tol=.1,output=True):
             b=offset
             c=maxWidth
             if output:
-                print "method",1
+                print("method",1)
         else:
-            print "No gaussian satisfying the criteria found."
+            print("No gaussian satisfying the criteria found.")
             return None
     else:
         b=offset
@@ -55,22 +55,22 @@ def initalFunction(minE,maxWidth,offset,tol=.1,output=True):
         if len(positive)>0:
             ind=positive.index(min(positive))
             if output:
-                print "method",2
+                print("method",2)
         elif len(alldE)>0:
             ind=alldE.index(max(alldE))
             if output:
-                print "method",3
+                print("method",3)
         else:
-            print "No gaussian satisfying the criteria found."
+            print("No gaussian satisfying the criteria found.")
             return None
 
         c=posCVals[ind]
 
     if output:
-        print 'b='+str(b)+' ,c='+str(c)+' ,energy='+str(gaussianEnergy(b,c))
+        print('b='+str(b)+' ,c='+str(c)+' ,energy='+str(gaussianEnergy(b,c)))
 
     if isinstance(b, complex) or isinstance(c, complex):
-        print "complex nums..."
+        print("complex nums...")
         return None
     gaussian=lambda x:(1/np.sqrt(np.sqrt(np.pi)*c))*np.exp(-1*(x-b)**2/(2.0*c**2))
 
@@ -110,7 +110,7 @@ def preComputeCutoff(N,mult,L,tol):
     while rListMax[nCutoff]<=tol:
         nCutoff+=1
 
-    print nCutoff
+    print(nCutoff)
 
 #attempts to quickly print the ith energy level for each i in inds
 #inds does not need to be an array
@@ -125,18 +125,18 @@ def printEnergyLevels(inds,getRidOf2and4=False):
         if lenInds==0:
             return None
         if max(inds)>=nCutoffPreComp[1000]:
-            print "I refuse to find energies that large."
+            print("I refuse to find energies that large.")
         inds=[x for x in inds if x<nCutoffPreComp[1000]]
     except:
         if inds>nCutoffPreComp[1000]:
-            print "I refuse to find energies that large."
+            print("I refuse to find energies that large.")
             return None
         lenInds=1
         inds=[inds]
 
     #smallest N i can get away with that hopefully wont give a wrong answer.
     m=max(inds)
-    keyList=nCutoffPreComp.keys()
+    keyList=list(nCutoffPreComp.keys())
     j=0
     key=keyList[j]
     while nCutoffPreComp[key]<=m:
@@ -148,9 +148,9 @@ def printEnergyLevels(inds,getRidOf2and4=False):
     eigen,_,grid,_,_=changeOfVariables(N,L)
     for i in inds:
         if getRidOf2and4:
-            print eigen[i][0]*(2**(4.0/3))
+            print(eigen[i][0]*(2**(4.0/3)))
         else:
-            print eigen[i][0]
+            print(eigen[i][0])
 
 
 def setupSuperpositionOfEigenStates(N,L,inds,output=False):
@@ -172,10 +172,10 @@ def setupSuperpositionOfEigenStates(N,L,inds,output=False):
 
     if output:
         xqmax=abs(meanPositionPower(initFVec,ygrid,L,1))
-        print "energy="+str(energy)
+        print("energy="+str(energy))
         if period>0:
-            print "period="+str(period)
-        print '"classical period"='+str(4*np.sqrt(2)*1.31103/xqmax)
+            print("period="+str(period))
+        print('"classical period"='+str(4*np.sqrt(2)*1.31103/xqmax))
 
     return eigen,card,grid,d,dd,initFVec,period,energy
 
@@ -203,7 +203,7 @@ def meanPositionPower(state,grid,L,power):
 
     total=0
     #takes the values 1,2,...,N-3,N-2   -> no endpoints
-    for i in xrange(1,N-1):
+    for i in range(1,N-1):
         weight=(np.pi/(N-1))
 
         yi=grid[i]
@@ -237,7 +237,7 @@ def meanMomentum1(state,grid,L,d):
 
     total=0
     #takes the values 1,2,...,N-3,N-2   -> no endpoints
-    for i in xrange(1,N-1):
+    for i in range(1,N-1):
         weight=(np.pi/(N-1))
 
         yi=grid[i]
@@ -265,7 +265,7 @@ def meanMomentum2(state,grid,L,d,dd):
 
     total=0
     #takes the values 1,2,...,N-3,N-2   -> no endpoints
-    for i in xrange(1,N-1):
+    for i in range(1,N-1):
         weight=(np.pi/(N-1))
 
         yi=grid[i]
@@ -306,10 +306,10 @@ def checkValues(vec,ygrid,L,d,dd,r=4,output=False):
         classicalEnergy=meanP**2/2+meanX**4/4
 
     if output:
-        print "The mean position="+str(round(meanX,r))+" and the rms position="+str(round(rmsX,r))
-        print "and the mean Momentum="+str(round(meanP,r))+" and the rms Momentum="+str(round(rmsP,r))
-        print "and Heisenberg's uncertanty(>.5)="+str(round(hu,r))+" and Energy="+str(round(energy,r))
-        print "classical energy?="+str(classicalEnergy)
+        print("The mean position="+str(round(meanX,r))+" and the rms position="+str(round(rmsX,r)))
+        print("and the mean Momentum="+str(round(meanP,r))+" and the rms Momentum="+str(round(rmsP,r)))
+        print("and Heisenberg's uncertanty(>.5)="+str(round(hu,r))+" and Energy="+str(round(energy,r)))
+        print("classical energy?="+str(classicalEnergy))
     return meanX,rmsX,meanP,rmsP,energy,classicalEnergy
 
 def quickCheckValuesW(N,L,func):
@@ -331,7 +331,7 @@ def innerProduct(fVec,eigenstate,grid,L):
 
     total=0
     #takes the values 1,2,...,N-3,N-2   -> no endpoints
-    for i in xrange(1,N-1):
+    for i in range(1,N-1):
         weight=(np.pi/(N-1))
 
         xi=grid[i]
@@ -367,7 +367,7 @@ def timeEvolve(fVec,t,L,eigen,grid):
 
     lastOverlap=10**5
     almostLastO=10**5
-    for i in xrange(0,nCutoff):
+    for i in range(0,nCutoff):
         eigenE,eigenV=eigen[i]
 
 
@@ -387,8 +387,8 @@ def timeEvolve(fVec,t,L,eigen,grid):
 
     tol=10**(-8)#arbitrary 8
     if lastOverlap>tol or almostLastO>tol:
-        print "warning: overlap was not small before nCutoff reached"
-        print max(lastOverlap,almostLastO)
+        print("warning: overlap was not small before nCutoff reached")
+        print(max(lastOverlap,almostLastO))
 
     return PsiT
 
@@ -487,24 +487,24 @@ def timeResidual(initFVec,L,eigen,card,grid,Nprime,t):
     bigGrid,dB,ddB,_=SpectralChebyshevExterior(-1,1,Nprime)
     bigH=hamiltonian(L,bigGrid,dB,ddB)
 
-    g=lambda x: sum([initFVec[i]*card[i](x) for i in xrange(len(initFVec))])
+    g=lambda x: sum([initFVec[i]*card[i](x) for i in range(len(initFVec))])
     interpInitVec=g(bigGrid)
 
     interpEigVList=[]
-    for i in xrange(0,nCutoff):
+    for i in range(0,nCutoff):
         eigenE,eigenV=eigen[i]
-        eigenFunc=lambda x: sum([eigenV[i]*card[i](x) for i in xrange(len(eigenV))])
+        eigenFunc=lambda x: sum([eigenV[i]*card[i](x) for i in range(len(eigenV))])
         interpEigV=eigenFunc(bigGrid)
         interpEigVList.append(interpEigV)
 
     RList=[]
     for j,finalFVec in enumerate(finalFVecList):
-        print j
-        f=lambda x: sum([finalFVec[i]*card[i](x) for i in xrange(len(finalFVec))])
+        print(j)
+        f=lambda x: sum([finalFVec[i]*card[i](x) for i in range(len(finalFVec))])
         interpFinalVec=f(bigGrid)
 
         R=bigH.dot(interpFinalVec)
-        for i in xrange(0,nCutoff):
+        for i in range(0,nCutoff):
             eigenE,eigenV=eigen[i]
 
 
@@ -594,7 +594,7 @@ def maxResidualOfGaussianPlot(N,L,t,mult,minE,maxWidth,offset):
 #if cardinal funcitons are supplied then the plots will be interpolated functions of 2000 evenly spaced points
 def makeMovie(finalFVecs,grid,times,initFVec=None,card=None,d=None,dd=None,printValues=False,showGraph=True):
     if not IREMEMBEREDTOCHANGEIT:
-        print "you forgot to change the thing at the top"
+        print("you forgot to change the thing at the top")
         return None
 
     plt.rcParams['animation.ffmpeg_path'] = 'C:\\ffmpeg\\bin\\ffmpeg.exe'
@@ -605,7 +605,7 @@ def makeMovie(finalFVecs,grid,times,initFVec=None,card=None,d=None,dd=None,print
     ygrid=mapFiniteToInfArray(grid,L)
 
     if (not showGraph) and (not printValues):
-        print "This function has no purpose if you do nothing."
+        print("This function has no purpose if you do nothing.")
         return None
 
     fig=plt.figure()
@@ -615,9 +615,9 @@ def makeMovie(finalFVecs,grid,times,initFVec=None,card=None,d=None,dd=None,print
         for i,finalFVec in enumerate(finalFVecs):
             
             if printValues and (not d is None) and (not dd is None):
-                print "At t="+str(round(times[i],8))
+                print("At t="+str(round(times[i],8)))
                 checkValues(finalFVec,ygrid,L,d,dd,r=5,output=True)
-                print '-'*50
+                print('-'*50)
             
             if showGraph:
                 if not initFVec is None:
@@ -689,7 +689,7 @@ def printOverlapWithTime(N,L,i,j):
     else:
     
         period=2*np.pi/abs(eigen[i][0]-eigen[j][0])
-        print period
+        print(period)
         initFVec=(1/np.sqrt(2))*(eigen[i][1]+eigen[j][1])
 
         t=np.linspace(0,period,11)
@@ -702,7 +702,7 @@ def printOverlapWithTime(N,L,i,j):
     originalOverlaps=[]
     for finalFVec in finalFVecs:
         overlaps=[]
-        for k in xrange(0,nCutoffPreComp[len(grid)]):
+        for k in range(0,nCutoffPreComp[len(grid)]):
             eigenE,eigenV = eigen[k]
             o=innerProduct(finalFVec,eigenV,grid,L)
             overlaps.append(o)
@@ -710,10 +710,10 @@ def printOverlapWithTime(N,L,i,j):
         overlaps=np.array(overlaps)
         if len(originalOverlaps)==0:
             originalOverlaps=abs(overlaps)
-            print originalOverlaps
+            print(originalOverlaps)
         else:
             diff=originalOverlaps - abs(overlaps)
-            print max(abs(diff))
+            print(max(abs(diff)))
             #print diff
         #print "this should be 1="+str(sum(abs(overlaps)**2))
 
@@ -744,17 +744,17 @@ def checkEhrenfest(N,L,initFVec,eigen,grid,d,dd,tinit,dt):
 
 
     WL=len(tinit)
-    for i in xrange(WL):
+    for i in range(WL):
         #print str((meanX[2]-meanX[0])/(2*dt))+'='+str(meanP[1])
-        print ((meanX[i+2*WL]-meanX[i])/(2*dt))-meanP[i+WL]
+        print(((meanX[i+2*WL]-meanX[i])/(2*dt))-meanP[i+WL])
         if usingHO:
             #print str((meanP[2]-meanP[0])/(2*dt))+'='+str(-1*meanX[1])
-            print ((meanP[i+2*WL]-meanP[i])/(2*dt))-(-1*meanX[i+WL])
+            print(((meanP[i+2*WL]-meanP[i])/(2*dt))-(-1*meanX[i+WL]))
         else:
             #print str((meanP[2]-meanP[0])/(2*dt))+'='+str(-1*meanX3[1])
-            print ((meanP[i+2*WL]-meanP[i])/(2*dt))-(-1*meanX3[i+WL])
+            print(((meanP[i+2*WL]-meanP[i])/(2*dt))-(-1*meanX3[i+WL]))
 
-        print '-'*44
+        print('-'*44)
 
 def checkEhrenfestWrapper(initFunc,L,N,tinit,dt):
     eigen,_,grid,d,dd=changeOfVariables(N,L)
@@ -775,7 +775,7 @@ def checkPeriodTimesXqmax(L,eigen,grid,i,j):
 
     initFVec=(1/np.sqrt(2))*(eigen[i][1]+eigen[j][1])
     xqmax=abs(meanPositionPower(initFVec,ygrid,L,1))
-    print period*xqmax
+    print(period*xqmax)
     return period,xqmax
 
 #Plot should be independent of L
@@ -785,14 +785,14 @@ def plotGaussianCvsRequiredN(L,tol=10**(-8)):
     points=100
 
     eigen,card,grid,d,dd=changeOfVariables(N,L)
-    print "got eigen"
+    print("got eigen")
 
     cList=np.linspace(.06,1,points)
     requiredNVals=[]
     for j,c in enumerate(cList):
         if j%(points/10)==0 and j>0:
-            print cList[j-1],requiredNVals[-1]
-            print float(j)/points
+            print(cList[j-1],requiredNVals[-1])
+            print(float(j)/points)
 
 
         f=lambda x:(1/np.sqrt(np.sqrt(np.pi)*c))*np.exp(-1*(x)**2/(2.0*c**2))
@@ -816,7 +816,7 @@ def plotGaussianCvsRequiredN(L,tol=10**(-8)):
             i+=1
 
         if i==nCutoff:
-            print "Inaccurate graph...",c
+            print("Inaccurate graph...",c)
 
         requiredNVals.append(i)
 
@@ -831,7 +831,7 @@ def testGaussianCvsRequiredN(L,c,tol=10**(-8)):
     N=1000
 
     eigen,card,grid,d,dd=changeOfVariables(N,L)
-    print "got eigen"
+    print("got eigen")
 
     f=lambda x:(1/np.sqrt(np.sqrt(np.pi)*c))*np.exp(-1*(x)**2/(2.0*c**2))
     fVec=funcToVec(f,grid,L)
@@ -856,10 +856,10 @@ def testGaussianCvsRequiredN(L,c,tol=10**(-8)):
         i+=1
 
     if i==nCutoff:
-        print "Inaccurate graph...",c
+        print("Inaccurate graph...",c)
 
-    print i
-    print overlapList[:i]
+    print(i)
+    print(overlapList[:i])
 
 
 ###################################################################################
@@ -880,17 +880,17 @@ def plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=Fal
     finalFVecs=timeEvolve(initFVec,t,L,eigen,grid)
 
     #arrays of mean position,rms position,mean P, rms P,energy,"classicalEnergy"
-    arraysOfVals=[[] for i in xrange(CVNR)]
+    arraysOfVals=[[] for i in range(CVNR)]
     for i,finalFVec in enumerate(finalFVecs):
         if i%(int(NumSteps/10))==0:
-            print float(i)/NumSteps
+            print(float(i)/NumSteps)
 
         vals=checkValues(finalFVec,ygrid,L,d,dd)
         for i,A in enumerate(arraysOfVals):
             A.append(vals[i])
 
 
-    for i in xrange(CVNR):
+    for i in range(CVNR):
         if ValsToPlot[i]:
             plt.plot(t,arraysOfVals[i],label=VALNAMES[i],color=colors[i])
 
@@ -906,7 +906,7 @@ def plotValues(N,L,initFVec,eigen,grid,d,dd,totTime,NumSteps,ValsToPlot,soar=Fal
             plt.plot((t[0], t[-1]), (xmax, xmax), 'k-')
             plt.plot((t[0], t[-1]), (-xmax, -xmax), 'k-')
         if cp:
-            for i in xrange(int(totTime/clPeriod)+1):
+            for i in range(int(totTime/clPeriod)+1):
                 plt.plot((i*clPeriod, i*clPeriod), (-xmax, xmax), 'k-')
     
     if car:
